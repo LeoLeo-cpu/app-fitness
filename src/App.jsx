@@ -1,0 +1,77 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { Flame } from 'lucide-react';
+import { BottomNav } from './components/BottomNav';
+import { Home } from './pages/Home';
+import { Workout } from './pages/Workout';
+import { Diet } from './pages/Diet';
+import { History } from './pages/History';
+import { Settings } from './pages/Settings';
+import { WorkoutManager } from './pages/WorkoutManager';
+
+function App() {
+  const [history] = useLocalStorage('fitness_workout_history', []);
+  
+  const calculateStreak = () => {
+    if (!history || history.length === 0) return 0;
+    const dates = [...new Set(history.map(h => h.date.split('T')[0]))].sort().reverse();
+    
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const firstDateStr = dates[0];
+    const firstDate = new Date(`${firstDateStr}T00:00:00`); 
+    firstDate.setHours(0,0,0,0);
+    
+    const diffDaysFirst = Math.floor((today - firstDate) / (1000 * 60 * 60 * 24));
+    if (diffDaysFirst > 1) return 0;
+    
+    streak = 1;
+    let expectedNext = new Date(firstDate);
+    expectedNext.setDate(expectedNext.getDate() - 1);
+    
+    for (let i = 1; i < dates.length; i++) {
+      const d = new Date(`${dates[i]}T00:00:00`);
+      d.setHours(0,0,0,0);
+      if (d.getTime() === expectedNext.getTime()) {
+        streak++;
+        expectedNext.setDate(expectedNext.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  };
+
+  const streak = calculateStreak();
+
+  return (
+    <Router>
+      <div style={{ minHeight: '100vh', position: 'relative' }}>
+        <div style={{ 
+          position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 50,
+          display: 'flex', alignItems: 'center', gap: '0.25rem',
+          background: 'rgba(0,0,0,0.5)', padding: '0.25rem 0.75rem', borderRadius: '1rem',
+          backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.05)',
+          color: streak > 0 ? '#f97316' : 'var(--text-muted)'
+        }}>
+          <Flame size={18} fill={streak > 0 ? '#f97316' : 'none'} />
+          <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{streak}</span>
+        </div>
+
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/workout" element={<Workout />} />
+          <Route path="/workout-manager" element={<WorkoutManager />} />
+          <Route path="/diet" element={<Diet />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+        <BottomNav />
+      </div>
+    </Router>
+  );
+}
+
+export default App;
