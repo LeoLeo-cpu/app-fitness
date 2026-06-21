@@ -138,6 +138,20 @@ export function Settings() {
           </div>
         </div>
 
+        <div className="flex gap-md">
+          <div style={{ flex: 1 }}>
+            <label className="text-muted" style={{ display: 'block', marginBottom: '0.25rem' }}>Descanso entre Séries (Global)</label>
+            <select name="restTimer" className="input-field" value={profile.restTimer || 60} onChange={handleChange}>
+              <option value="30">30 segundos</option>
+              <option value="45">45 segundos</option>
+              <option value="60">60 segundos</option>
+              <option value="90">90 segundos</option>
+              <option value="120">2 minutos</option>
+              <option value="180">3 minutos</option>
+            </select>
+          </div>
+        </div>
+
         <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
           <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--accent-purple)' }}>Inteligência Artificial (Gemini)</h2>
           <p className="text-muted" style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>

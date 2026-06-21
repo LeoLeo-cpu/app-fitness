@@ -28,7 +28,8 @@ export const DEFAULT_USER_PROFILE = {
   activityLevel: 1.2,
   tmb: 0,
   calTarget: 0,
-  macros: { protein: 0, carbs: 0, fat: 0 }
+  macros: { protein: 0, carbs: 0, fat: 0 },
+  restTimer: 60
 };
 
 export const WORKOUT_CYCLE = ['Push', 'Pull', 'Legs', 'Rest'];
