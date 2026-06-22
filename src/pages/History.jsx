@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { ComposedChart, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DEFAULT_WORKOUT_PLAN } from '../data/defaultData';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function History() {
   const [history] = useLocalStorage('fitness_workout_history', []);
@@ -68,6 +69,60 @@ export function History() {
     setTodayWeight('');
   };
 
+  // Calendar Logic
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
+
+  const sessionMap = useMemo(() => {
+    const map = {};
+    history.forEach(session => {
+      const d = new Date(session.date);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      map[dateStr] = session;
+    });
+    return map;
+  }, [history]);
+
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+
+  const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+  const renderCalendarDays = () => {
+    const cells = [];
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      cells.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const session = sessionMap[dateStr];
+      let indicatorColor = null;
+      if (session) {
+        if (session.workoutType === 'Push') indicatorColor = 'var(--accent-blue)';
+        if (session.workoutType === 'Pull') indicatorColor = 'var(--accent-purple)';
+        if (session.workoutType === 'Legs') indicatorColor = 'var(--accent-green)';
+      }
+      const isSelected = selectedDate === dateStr;
+      
+      cells.push(
+        <div 
+          key={`day-${d}`} 
+          className={`calendar-day ${isSelected ? 'selected' : ''}`}
+          onClick={() => setSelectedDate(dateStr)}
+          style={{ background: isSelected ? 'rgba(255,255,255,0.1)' : '' }}
+        >
+          {d}
+          {indicatorColor && <div className="calendar-indicator" style={{ backgroundColor: indicatorColor }}></div>}
+        </div>
+      );
+    }
+    return cells;
+  };
+
   return (
     <div className="p-md animate-fade-in" style={{ paddingBottom: '100px' }}>
       <h1>Acompanhamento</h1>
@@ -117,21 +172,48 @@ export function History() {
           </div>
           
           <div style={{ marginTop: '2rem' }}>
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Últimos Treinos</h2>
-            {history.length === 0 ? (
-              <p className="text-muted text-center" style={{ padding: '1rem 0' }}>Nenhum treino concluído ainda.</p>
-            ) : (
-              history.slice(0, 5).map(session => (
-                <div key={session.id} className="glass-panel" style={{ padding: '1rem', marginBottom: '0.5rem' }}>
-                  <div className="flex justify-between items-center" style={{ marginBottom: '0.25rem' }}>
-                    <span style={{ fontWeight: 'bold', color: 'var(--accent-purple)' }}>{session.workoutType}</span>
-                    <span className="text-muted" style={{ fontSize: '0.875rem' }}>{new Date(session.date).toLocaleDateString('pt-BR')}</span>
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
+                <button onClick={prevMonth} style={{ padding: '0.5rem', color: 'var(--text-muted)' }}><ChevronLeft size={20} /></button>
+                <h2 style={{ fontSize: '1.2rem', margin: 0 }}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h2>
+                <button onClick={nextMonth} style={{ padding: '0.5rem', color: 'var(--text-muted)' }}><ChevronRight size={20} /></button>
+              </div>
+              
+              <div className="calendar-grid">
+                {dayNames.map(day => <div key={day} className="calendar-day-header">{day}</div>)}
+                {renderCalendarDays()}
+              </div>
+            </div>
+            
+            {selectedDate && (
+              <div className="animate-fade-in" style={{ marginTop: '1rem' }}>
+                {sessionMap[selectedDate] ? (
+                  <div className="glass-panel" style={{ padding: '1rem', borderLeft: `4px solid ${sessionMap[selectedDate].workoutType === 'Push' ? 'var(--accent-blue)' : sessionMap[selectedDate].workoutType === 'Pull' ? 'var(--accent-purple)' : 'var(--accent-green)'}` }}>
+                    <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
+                      <h3 style={{ fontSize: '1.1rem' }}>Treino {sessionMap[selectedDate].workoutType}</h3>
+                      <span className="text-muted" style={{ fontSize: '0.875rem' }}>{selectedDate.split('-').reverse().join('/')}</span>
+                    </div>
+                    <div className="flex flex-col gap-sm">
+                      {sessionMap[selectedDate].exercises.map((ex, idx) => {
+                        const maxLoad = Math.max(...ex.sets.map(s => Number(s.load) || 0));
+                        return (
+                          <div key={idx} style={{ background: 'var(--surface-color)', padding: '0.75rem', borderRadius: '8px' }}>
+                            <div style={{ fontWeight: '500', marginBottom: '4px' }}>{ex.name}</div>
+                            <div className="text-muted" style={{ fontSize: '0.875rem' }}>
+                              {ex.sets.length} séries • Carga máxima: {maxLoad}kg
+                            </div>
+                            {ex.note && <div style={{ fontSize: '0.8rem', color: 'var(--accent-purple)', marginTop: '4px' }}>Obs: {ex.note}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <p className="text-muted" style={{ fontSize: '0.875rem' }}>
-                    {session.exercises.length} exercícios concluídos
-                  </p>
-                </div>
-              ))
+                ) : (
+                  <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center' }}>
+                    <p className="text-muted">Dia de descanso. Nenhuma atividade registrada em {selectedDate.split('-').reverse().join('/')}.</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
