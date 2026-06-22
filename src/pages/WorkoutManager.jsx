@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DEFAULT_WORKOUT_PLAN } from '../data/defaultData';
 import { WorkoutWizard } from '../components/WorkoutWizard';
-import { Sparkles, Trash2, PlaySquare, RefreshCw } from 'lucide-react';
+import { Sparkles, Trash2, PlaySquare, RefreshCw, ChevronUp, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { VideoModal } from '../components/VideoModal';
 
@@ -25,6 +25,21 @@ export function WorkoutManager() {
   const removeExercise = (day, index) => {
     const newPlan = { ...workoutPlan };
     newPlan[day].splice(index, 1);
+    setWorkoutPlan(newPlan);
+  };
+
+  const moveExercise = (day, index, direction) => {
+    const newPlan = { ...workoutPlan };
+    const list = newPlan[day];
+    if (direction === 'up' && index > 0) {
+      const temp = list[index - 1];
+      list[index - 1] = list[index];
+      list[index] = temp;
+    } else if (direction === 'down' && index < list.length - 1) {
+      const temp = list[index + 1];
+      list[index + 1] = list[index];
+      list[index] = temp;
+    }
     setWorkoutPlan(newPlan);
   };
 
@@ -146,9 +161,21 @@ export function WorkoutManager() {
                 )}
               </div>
             )}
-            <button style={{ color: 'var(--accent-red)', padding: '0.5rem' }} onClick={() => removeExercise(activeTab, index)}>
-              <Trash2 size={20} />
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'center' }}>
+              {index > 0 && (
+                <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }} onClick={() => moveExercise(activeTab, index, 'up')}>
+                  <ChevronUp size={20} />
+                </button>
+              )}
+              {index < workoutPlan[activeTab].length - 1 && (
+                <button style={{ color: 'var(--text-muted)', padding: '0.25rem' }} onClick={() => moveExercise(activeTab, index, 'down')}>
+                  <ChevronDown size={20} />
+                </button>
+              )}
+              <button style={{ color: 'var(--accent-red)', padding: '0.25rem', marginTop: '0.5rem' }} onClick={() => removeExercise(activeTab, index)}>
+                <Trash2 size={20} />
+              </button>
+            </div>
           </div>
         ))}
         {workoutPlan[activeTab]?.length === 0 && (

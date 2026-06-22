@@ -17,47 +17,77 @@ export function Workout() {
   const isRestDay = currentWorkoutType === 'Rest';
   const exercises = isRestDay ? [] : workoutPlan[currentWorkoutType];
   
-  const [sessionLogs, setSessionLogs] = useState([]);
+  const [sessionLogs, setSessionLogs] = useLocalStorage('fitness_active_session_logs', []);
   
   const { heartRate, isConnecting, error, connect, disconnect, isConnected } = useHeartRate();
 
-  const [activeTimer, setActiveTimer] = useState(null);
-  const [timerInterval, setTimerInterval] = useState(null);
+  const [timerEndTime, setTimerEndTime] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null);
 
-  // Cleanup interval on unmount
+  const playBeep = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      osc.start();
+      setTimeout(() => osc.stop(), 800);
+    } catch (e) {
+      console.warn("AudioContext beep failed", e);
+    }
+  };
+
   useEffect(() => {
-    return () => {
-      if (timerInterval) clearInterval(timerInterval);
-    };
-  }, [timerInterval]);
+    if (!timerEndTime) {
+      setTimeLeft(null);
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.ceil((timerEndTime - now) / 1000);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setTimerEndTime(null);
+        setTimeLeft(null);
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+        playBeep();
+      } else {
+        setTimeLeft(remaining);
+      }
+    }, 200);
+    
+    return () => clearInterval(interval);
+  }, [timerEndTime]);
 
   const startTimer = () => {
-    if (timerInterval) clearInterval(timerInterval);
-    setActiveTimer(profile.restTimer || 60);
-    const interval = setInterval(() => {
-      setActiveTimer(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    setTimerInterval(interval);
+    const duration = profile.restTimer || 60;
+    setTimerEndTime(Date.now() + duration * 1000);
+    setTimeLeft(duration);
   };
 
   const adjustTimer = (amount) => {
-    setActiveTimer(prev => {
-      if (prev === null) return null;
-      const next = prev + amount;
-      return next > 0 ? next : 1;
-    });
+    if (!timerEndTime) return;
+    const newEndTime = timerEndTime + (amount * 1000);
+    if (newEndTime <= Date.now()) {
+      setTimerEndTime(null);
+      setTimeLeft(null);
+    } else {
+      setTimerEndTime(newEndTime);
+      setTimeLeft(Math.ceil((newEndTime - Date.now()) / 1000));
+    }
   };
 
   const closeTimer = () => {
-    if (timerInterval) clearInterval(timerInterval);
-    setActiveTimer(null);
+    setTimerEndTime(null);
+    setTimeLeft(null);
   };
 
   const handleLogExercise = (logData) => {
@@ -153,7 +183,7 @@ export function Workout() {
         </>
       )}
 
-      {activeTimer !== null && (
+      {timeLeft !== null && (
         <div style={{
           position: 'fixed',
           bottom: '80px',
@@ -173,7 +203,7 @@ export function Workout() {
         }}>
           <Timer size={24} color="var(--accent-purple)" />
           <span style={{ fontSize: '1.5rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
-            {Math.floor(activeTimer / 60)}:{(activeTimer % 60).toString().padStart(2, '0')}
+            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
           </span>
           <div className="flex items-center gap-sm">
             <button onClick={() => adjustTimer(-15)} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '50%', padding: '0.25rem' }}>

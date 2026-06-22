@@ -29,7 +29,7 @@ export function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete }) {
 
   return (
     <div className={`glass-panel ${completed ? 'completed' : ''}`} style={{ padding: '1rem', marginBottom: '1rem', borderLeft: completed ? '4px solid var(--accent-green)' : 'none' }}>
-      <div className="flex justify-between items-center" onClick={() => !completed && setExpanded(!expanded)} style={{ cursor: completed ? 'default' : 'pointer' }}>
+      <div className="flex justify-between items-center" onClick={() => setExpanded(!expanded)} style={{ cursor: 'pointer' }}>
         <div className="flex items-center gap-sm">
           <h3 style={{ fontSize: '1.1rem', color: completed ? 'var(--text-muted)' : 'var(--text-main)' }}>{exercise.name}</h3>
           {exercise.attentionShoulder && !completed && (
@@ -41,7 +41,7 @@ export function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete }) {
         </div>
       </div>
 
-      {expanded && !completed && (
+      {expanded && (
         <div style={{ marginTop: '1rem' }} className="animate-fade-in">
           {logs.map((log, i) => (
             <div key={i} className="flex gap-sm items-center" style={{ marginBottom: '0.5rem' }}>
@@ -86,7 +86,7 @@ export function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete }) {
           />
 
           <button className="btn-secondary" style={{ width: '100%', borderColor: 'var(--accent-green)', color: 'var(--accent-green)' }} onClick={handleComplete}>
-            Gravar Exercício
+            {completed ? 'Atualizar Exercício' : 'Gravar Exercício'}
           </button>
           
           <div className="flex gap-sm" style={{ marginTop: '0.75rem' }}>
