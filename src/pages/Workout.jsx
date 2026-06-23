@@ -6,6 +6,35 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
 
+let globalAudioCtx = null;
+
+const initAudio = () => {
+  if (!globalAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) globalAudioCtx = new Ctx();
+  }
+  if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
+    globalAudioCtx.resume();
+  }
+};
+
+const playBeep = () => {
+  if (!globalAudioCtx) return;
+  try {
+    const osc = globalAudioCtx.createOscillator();
+    const gainNode = globalAudioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(globalAudioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, globalAudioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, globalAudioCtx.currentTime);
+    osc.start();
+    osc.stop(globalAudioCtx.currentTime + 0.8);
+  } catch (e) {
+    console.warn("Audio beep failed", e);
+  }
+};
+
 export function Workout() {
   const navigate = useNavigate();
   const [workoutPlan] = useLocalStorage('fitness_workout_plan', { Push: [], Pull: [], Legs: [] });
@@ -23,25 +52,6 @@ export function Workout() {
 
   const [timerEndTime, setTimerEndTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
-
-  const playBeep = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      osc.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-      osc.start();
-      setTimeout(() => osc.stop(), 800);
-    } catch (e) {
-      console.warn("AudioContext beep failed", e);
-    }
-  };
 
   useEffect(() => {
     if (!timerEndTime) {
@@ -68,6 +78,7 @@ export function Workout() {
   }, [timerEndTime]);
 
   const startTimer = () => {
+    initAudio(); // Apple iOS requires AudioContext to be resumed strictly during a user click
     const duration = profile.restTimer || 60;
     setTimerEndTime(Date.now() + duration * 1000);
     setTimeLeft(duration);
