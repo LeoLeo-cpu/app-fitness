@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { AlertCircle, CheckCircle, PlaySquare, RefreshCw, Timer } from 'lucide-react';
 import { VideoModal } from './VideoModal';
 
-export function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete }) {
+export function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete, existingLog }) {
   const [expanded, setExpanded] = useState(false);
-  const [logs, setLogs] = useState(Array(exercise.sets).fill({ reps: '', load: exercise.suggestedLoad || '' }));
-  const [note, setNote] = useState('');
-  const [completed, setCompleted] = useState(false);
+  const [logs, setLogs] = useState(existingLog ? existingLog.sets : Array(exercise.sets).fill({ reps: '', load: exercise.suggestedLoad || '' }));
+  const [note, setNote] = useState(existingLog ? existingLog.note : '');
+  const [completed, setCompleted] = useState(!!existingLog);
   const [showVideo, setShowVideo] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
 

@@ -167,9 +167,19 @@ export function Workout() {
         </div>
       ) : (
         <>
-          {exercises.map(ex => (
-            <WorkoutCard key={ex.id} exercise={ex} onLogSet={handleLogExercise} onSwap={handleSwapExercise} onSetComplete={startTimer} />
-          ))}
+          {exercises.map(ex => {
+            const existingLog = sessionLogs.find(l => l.exerciseId === ex.id);
+            return (
+              <WorkoutCard 
+                key={ex.id} 
+                exercise={ex} 
+                existingLog={existingLog}
+                onLogSet={handleLogExercise} 
+                onSwap={handleSwapExercise} 
+                onSetComplete={startTimer} 
+              />
+            );
+          })}
 
           <button 
             className="btn-primary" 
