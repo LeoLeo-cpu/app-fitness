@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import React from 'react';
 import { AlertCircle, CheckCircle, PlaySquare, RefreshCw, Timer } from 'lucide-react';
 import { VideoModal } from './VideoModal';
 
-export function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete, existingLog }) {
+export const WorkoutCard = React.memo(function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete, existingLog }) {
   const [expanded, setExpanded] = useState(false);
   const [logs, setLogs] = useState(existingLog ? existingLog.sets : Array(exercise.sets).fill({ reps: '', load: exercise.suggestedLoad || '' }));
   const [note, setNote] = useState(existingLog ? existingLog.note : '');
@@ -118,4 +119,4 @@ export function WorkoutCard({ exercise, onLogSet, onSwap, onSetComplete, existin
       {showVideo && <VideoModal searchQuery={exercise.searchQuery || `como fazer ${exercise.name} corretamente`} onClose={() => setShowVideo(false)} />}
     </div>
   );
-}
+});

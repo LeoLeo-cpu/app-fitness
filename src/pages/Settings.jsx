@@ -10,7 +10,9 @@ export function Settings() {
 
   const testApiKey = async () => {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey.trim()}`);
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
+        headers: { 'x-goog-api-key': apiKey.trim() }
+      });
       const data = await response.json();
       if (data.error) {
         alert(`Erro na chave: ${data.error.message}`);
@@ -84,10 +86,20 @@ export function Settings() {
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target.result);
+        if (!data || typeof data !== 'object' || Array.isArray(data)) {
+          throw new Error('Formato de backup inválido');
+        }
+        
+        let hasFitnessData = false;
         for (const key in data) {
           if (key.startsWith('fitness_')) {
+            hasFitnessData = true;
             localStorage.setItem(key, data[key]);
           }
+        }
+        
+        if (!hasFitnessData) {
+          throw new Error('Nenhum dado do aplicativo encontrado no arquivo.');
         }
         alert('Dados restaurados com sucesso! O aplicativo será recarregado.');
         window.location.reload();

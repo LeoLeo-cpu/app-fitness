@@ -37,7 +37,7 @@ const playBeep = () => {
 
 export function Workout() {
   const navigate = useNavigate();
-  const [workoutPlan] = useLocalStorage('fitness_workout_plan', { Push: [], Pull: [], Legs: [] });
+  const [workoutPlan, setWorkoutPlan] = useLocalStorage('fitness_workout_plan', { Push: [], Pull: [], Legs: [] });
   const [currentDayIndex, setCurrentDayIndex] = useLocalStorage('fitness_workout_current_day', 0);
   const [history, setHistory] = useLocalStorage('fitness_workout_history', []);
   const [profile] = useLocalStorage('fitness_user_profile', DEFAULT_USER_PROFILE);
@@ -157,10 +157,10 @@ export function Workout() {
               {isConnecting ? '...' : 'Ligar'}
             </button>
           ) : (
-            <div onClick={disconnect} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '0.25rem 0.75rem', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
+            <button aria-label="Desconectar Monitor Cardíaco" onClick={disconnect} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '0.25rem 0.75rem', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>
               <HeartPulse size={16} />
               {heartRate ? `${heartRate} bpm` : '--'}
-            </div>
+            </button>
           )}
           <span style={{ background: 'var(--accent-blue)', padding: '0.25rem 0.75rem', borderRadius: 'var(--radius-full)', fontWeight: 'bold' }}>
             {currentWorkoutType}

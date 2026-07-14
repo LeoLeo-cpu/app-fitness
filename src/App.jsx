@@ -2,12 +2,15 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { Flame } from 'lucide-react';
 import { BottomNav } from './components/BottomNav';
-import { Home } from './pages/Home';
-import { Workout } from './pages/Workout';
-import { Diet } from './pages/Diet';
-import { History } from './pages/History';
-import { Settings } from './pages/Settings';
-import { WorkoutManager } from './pages/WorkoutManager';
+import { lazy, Suspense } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
+const Workout = lazy(() => import('./pages/Workout').then(m => ({ default: m.Workout })));
+const Diet = lazy(() => import('./pages/Diet').then(m => ({ default: m.Diet })));
+const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const WorkoutManager = lazy(() => import('./pages/WorkoutManager').then(m => ({ default: m.WorkoutManager })));
 
 function App() {
   const [history] = useLocalStorage('fitness_workout_history', []);
@@ -60,14 +63,18 @@ function App() {
           <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{streak}</span>
         </div>
 
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/workout" element={<Workout />} />
-          <Route path="/workout-manager" element={<WorkoutManager />} />
-          <Route path="/diet" element={<Diet />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
+        <ErrorBoundary>
+          <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Carregando...</div>}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/workout" element={<Workout />} />
+              <Route path="/workout-manager" element={<WorkoutManager />} />
+              <Route path="/diet" element={<Diet />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
         <BottomNav />
       </div>
     </Router>

@@ -1,6 +1,6 @@
 export function ProgressBar({ label, current, max, color }) {
-  const percentage = Math.min(100, Math.max(0, (current / max) * 100)) || 0;
-  const isOver = current > max;
+  const percentage = max > 0 ? Math.min(100, Math.max(0, (current / max) * 100)) : 0;
+  const isOver = max > 0 && current > max;
   const barColor = isOver ? 'var(--accent-red)' : color;
 
   return (

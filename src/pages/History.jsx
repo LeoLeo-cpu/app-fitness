@@ -26,7 +26,7 @@ export function History() {
   const chartData = [...history].reverse().map(session => {
     const exLog = session.exercises.find(e => e.exerciseId === selectedExerciseId);
     if (!exLog) return null;
-    const maxLoad = Math.max(...exLog.sets.map(s => Number(s.load) || 0));
+    const maxLoad = exLog.sets.length > 0 ? Math.max(...exLog.sets.map(s => Number(s.load) || 0)) : 0;
     return {
       date: new Date(session.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       carga: maxLoad,
@@ -109,15 +109,16 @@ export function History() {
       const isSelected = selectedDate === dateStr;
       
       cells.push(
-        <div 
+        <button 
           key={`day-${d}`} 
           className={`calendar-day ${isSelected ? 'selected' : ''}`}
           onClick={() => setSelectedDate(dateStr)}
-          style={{ background: isSelected ? 'rgba(255,255,255,0.1)' : '' }}
+          style={{ background: isSelected ? 'rgba(255,255,255,0.1)' : '', border: 'none', cursor: 'pointer' }}
+          aria-label={`Ver treino do dia ${d}`}
         >
           {d}
           {indicatorColor && <div className="calendar-indicator" style={{ backgroundColor: indicatorColor }}></div>}
-        </div>
+        </button>
       );
     }
     return cells;
@@ -195,7 +196,7 @@ export function History() {
                     </div>
                     <div className="flex flex-col gap-sm">
                       {sessionMap[selectedDate].exercises.map((ex, idx) => {
-                        const maxLoad = Math.max(...ex.sets.map(s => Number(s.load) || 0));
+                        const maxLoad = ex.sets.length > 0 ? Math.max(...ex.sets.map(s => Number(s.load) || 0)) : 0;
                         return (
                           <div key={idx} style={{ background: 'var(--surface-color)', padding: '0.75rem', borderRadius: '8px' }}>
                             <div style={{ fontWeight: '500', marginBottom: '4px' }}>{ex.name}</div>

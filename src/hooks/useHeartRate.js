@@ -8,7 +8,13 @@ export function useHeartRate() {
 
   const connect = useCallback(async () => {
     if (!navigator.bluetooth) {
-      setError("Web Bluetooth API não é suportada neste navegador.");
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      if (isIOS || isSafari) {
+        setError("Monitor Bluetooth não funciona no iOS/Safari (limitação da Apple). Use o Chrome no Android ou Desktop.");
+      } else {
+        setError("Web Bluetooth API não é suportada neste navegador.");
+      }
       return;
     }
 
