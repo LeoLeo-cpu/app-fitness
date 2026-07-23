@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
 
 let globalAudioCtx = null;
-let silentOscillator = null;
+let silentAudioEl = null;
 
 const initAudio = () => {
   if (!globalAudioCtx) {
@@ -20,23 +20,19 @@ const initAudio = () => {
 };
 
 const startSilentAudio = () => {
-  if (!globalAudioCtx) return;
-  stopSilentAudio(); // Ensure we don't have multiple running
-  silentOscillator = globalAudioCtx.createOscillator();
-  const gainNode = globalAudioCtx.createGain();
-  gainNode.gain.value = 0.0001; // practically silent
-  silentOscillator.connect(gainNode);
-  gainNode.connect(globalAudioCtx.destination);
-  silentOscillator.start();
+  if (!silentAudioEl) {
+    // 1-sample silent WAV
+    silentAudioEl = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+    silentAudioEl.loop = true;
+    silentAudioEl.volume = 0.01;
+  }
+  silentAudioEl.play().catch(e => console.warn("Audio play blocked", e));
 };
 
 const stopSilentAudio = () => {
-  if (silentOscillator) {
-    try {
-      silentOscillator.stop();
-      silentOscillator.disconnect();
-    } catch (e) {}
-    silentOscillator = null;
+  if (silentAudioEl) {
+    silentAudioEl.pause();
+    silentAudioEl.currentTime = 0;
   }
 };
 
