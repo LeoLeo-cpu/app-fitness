@@ -11,20 +11,25 @@ Perfil do usuário: ${userProfile.age || 30} anos, ${userProfile.weight || 75}kg
 Respostas do questionário do usuário:
 - Objetivo principal: ${answers.goal}
 - Local de treino: ${answers.location}
+- Divisão de Treino (Split): ${answers.split}
 - Frequência: ${answers.frequency}
 - Restrições/Dores: ${answers.restrictions}
 - Nível de experiência: ${answers.experience}
 
-Crie um plano de treino dividido estritamente em Push (Empurrar), Pull (Puxar) e Legs (Pernas), adaptado a este perfil e que respeite a frequência solicitada (${answers.frequency}). Ajuste o volume e intensidade baseado nos dias de treino. Se ele treinar apenas 3 dias, o treino de cada grupo pode ser um pouco mais volumoso.
-Gere IDs únicos simples (ex: p1, pu1, l1).
+Crie um plano de treino baseado na divisão solicitada (${answers.split}). Se o usuário escolheu "Deixar a IA decidir", escolha a melhor divisão de treino baseada na frequência e nível de experiência dele.
+Adapte o volume e intensidade baseado nos dias de treino e no perfil.
+Gere IDs únicos simples (ex: pt1, c1, l1).
 Se o usuário tiver dor no ombro e algum exercício envolver pressão excessiva sobre a cabeça ou abdução pesada, marque "attentionShoulder" como true. Senão, false.
 
 Retorne ESTRITAMENTE E APENAS um objeto JSON válido sem formatações Markdown (não use \`\`\`json) no seguinte formato exato:
 {
-  "Push": [ { "id": "p1", "name": "Exemplo Supino", "sets": 3, "repRange": "8-12", "suggestedLoad": "10", "attentionShoulder": false, "alternatives": ["Supino Máquina", "Flexão de Braço"], "searchQuery": "como fazer supino reto corretamente" } ],
-  "Pull": [ ],
-  "Legs": [ ]
+  "cycle": ["Nome do Dia 1 (ex: Upper)", "Nome do Dia 2 (ex: Lower)", "Descanso"],
+  "plan": {
+    "Nome do Dia 1 (ex: Upper)": [ { "id": "u1", "name": "Supino", "sets": 3, "repRange": "8-12", "suggestedLoad": "10", "attentionShoulder": false, "alternatives": ["Supino Máquina", "Flexão"], "searchQuery": "como fazer supino reto" } ],
+    "Nome do Dia 2 (ex: Lower)": [ ]
+  }
 }
+Lembre-se: O array "cycle" deve ditar a ordem exata dos dias na semana. Use a palavra "Descanso" para os dias de folga. A chave "plan" deve conter apenas os dias de treino (não inclua "Descanso" como chave em "plan").
 `;
 
   try {

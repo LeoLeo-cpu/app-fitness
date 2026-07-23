@@ -12,6 +12,7 @@ export function WorkoutWizard({ onComplete, onCancel }) {
     location: '',
     restrictions: '',
     frequency: '',
+    split: '',
     experience: ''
   });
   const [loading, setLoading] = useState(false);
@@ -112,6 +113,26 @@ export function WorkoutWizard({ onComplete, onCancel }) {
           )}
           {step === 5 && (
             <div className="animate-fade-in">
+              <p className="text-muted">Qual divisão de treino prefere?</p>
+              <select className="input-field" style={{ margin: '1rem 0' }} value={answers.split} onChange={e => setAnswers({...answers, split: e.target.value})}>
+                <option value="">Selecione...</option>
+                <option value="Deixar a IA decidir">Deixar a IA decidir (Recomendado)</option>
+                <option value="Full Body (Corpo Inteiro)">Full Body (Corpo Inteiro)</option>
+                <option value="Upper / Lower (Superior / Inferior)">Upper / Lower (Superior / Inferior)</option>
+                <option value="PPL (Empurrar / Puxar / Pernas)">PPL (Empurrar / Puxar / Pernas)</option>
+                <option value="PPL + Upper/Lower (Híbrido)">PPL + Upper/Lower (Híbrido)</option>
+                <option value="Bro Split (ABCDE)">Bro Split (1 Grupo Muscular por dia)</option>
+                <option value="Arnold Split (Antagonistas)">Arnold Split (Antagonistas)</option>
+                <option value="PHUL (Força e Hipertrofia)">PHUL (Força e Hipertrofia)</option>
+              </select>
+              <div className="flex gap-md">
+                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(4)}>Voltar</button>
+                <button className="btn-primary" style={{ flex: 1 }} disabled={!answers.split} onClick={() => setStep(6)}>Avançar</button>
+              </div>
+            </div>
+          )}
+          {step === 6 && (
+            <div className="animate-fade-in">
               <p className="text-muted">Qual seu nível de experiência?</p>
               <select className="input-field" style={{ margin: '1rem 0' }} value={answers.experience} onChange={e => setAnswers({...answers, experience: e.target.value})}>
                 <option value="">Selecione...</option>
@@ -121,7 +142,7 @@ export function WorkoutWizard({ onComplete, onCancel }) {
               </select>
               {error && <p style={{ color: 'var(--accent-red)', margin: '1rem 0', fontSize: '0.875rem' }}>{error}</p>}
               <div className="flex gap-md">
-                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(4)}>Voltar</button>
+                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(5)}>Voltar</button>
                 <button className="btn-primary" style={{ flex: 1 }} disabled={!answers.experience} onClick={handleGenerate}>Gerar Treino</button>
               </div>
             </div>

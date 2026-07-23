@@ -1,5 +1,5 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { WORKOUT_CYCLE, DEFAULT_USER_PROFILE } from '../data/defaultData';
+import { DEFAULT_USER_PROFILE } from '../data/defaultData';
 import { WorkoutCard } from '../components/WorkoutCard';
 import { Check, Edit2, HeartPulse, Timer, X, Plus, Minus } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -57,12 +57,19 @@ export function Workout() {
   const navigate = useNavigate();
   const [workoutPlan, setWorkoutPlan] = useLocalStorage('fitness_workout_plan', { Push: [], Pull: [], Legs: [] });
   const [currentDayIndex, setCurrentDayIndex] = useLocalStorage('fitness_workout_current_day', 0);
+  const [workoutCycle] = useLocalStorage('fitness_workout_cycle', ['Push', 'Pull', 'Legs', 'Rest']);
   const [history, setHistory] = useLocalStorage('fitness_workout_history', []);
   const [profile] = useLocalStorage('fitness_user_profile', DEFAULT_USER_PROFILE);
   
-  const currentWorkoutType = WORKOUT_CYCLE[currentDayIndex];
-  const isRestDay = currentWorkoutType === 'Rest';
-  const exercises = isRestDay ? [] : workoutPlan[currentWorkoutType];
+  // Safe bounds check
+  const safeIndex = currentDayIndex >= workoutCycle.length ? 0 : currentDayIndex;
+  if (currentDayIndex >= workoutCycle.length) {
+    setCurrentDayIndex(0);
+  }
+
+  const currentWorkoutType = workoutCycle[safeIndex];
+  const isRestDay = currentWorkoutType.toLowerCase().includes('descanso') || currentWorkoutType === 'Rest';
+  const exercises = isRestDay ? [] : (workoutPlan[currentWorkoutType] || []);
   
   const [sessionLogs, setSessionLogs] = useLocalStorage('fitness_active_session_logs', []);
   
@@ -182,12 +189,12 @@ export function Workout() {
     
     setHistory([session, ...history]);
     // Advance to next day
-    setCurrentDayIndex((currentDayIndex + 1) % WORKOUT_CYCLE.length);
+    setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
     setSessionLogs([]);
   };
 
   const advanceRestDay = () => {
-    setCurrentDayIndex((currentDayIndex + 1) % WORKOUT_CYCLE.length);
+    setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
   };
 
   return (

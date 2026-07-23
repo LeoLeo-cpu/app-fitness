@@ -1,5 +1,5 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { DEFAULT_USER_PROFILE, WORKOUT_CYCLE } from '../data/defaultData';
+import { DEFAULT_USER_PROFILE } from '../data/defaultData';
 import { ProgressBar } from '../components/ProgressBar';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, Utensils } from 'lucide-react';
@@ -7,11 +7,18 @@ import { Dumbbell, Utensils } from 'lucide-react';
 export function Home() {
   const navigate = useNavigate();
   const [profile] = useLocalStorage('fitness_user_profile', DEFAULT_USER_PROFILE);
-  const [currentDayIndex] = useLocalStorage('fitness_workout_current_day', 0);
+  const [currentDayIndex, setCurrentDayIndex] = useLocalStorage('fitness_workout_current_day', 0);
+  const [workoutCycle] = useLocalStorage('fitness_workout_cycle', ['Push', 'Pull', 'Legs', 'Rest']);
   const [mealsLog] = useLocalStorage('fitness_meals_log', []);
   
-  const currentWorkoutType = WORKOUT_CYCLE[currentDayIndex];
-  const isRestDay = currentWorkoutType === 'Rest';
+  // Safe bounds check
+  const safeIndex = currentDayIndex >= workoutCycle.length ? 0 : currentDayIndex;
+  if (currentDayIndex >= workoutCycle.length) {
+    setCurrentDayIndex(0);
+  }
+
+  const currentWorkoutType = workoutCycle[safeIndex];
+  const isRestDay = currentWorkoutType.toLowerCase().includes('descanso') || currentWorkoutType === 'Rest';
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todaysLogIndex = mealsLog.findIndex(log => log.date === todayStr);

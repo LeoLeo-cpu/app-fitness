@@ -9,17 +9,25 @@ import { VideoModal } from '../components/VideoModal';
 export function WorkoutManager() {
   const navigate = useNavigate();
   const [workoutPlan, setWorkoutPlan] = useLocalStorage('fitness_workout_plan', DEFAULT_WORKOUT_PLAN);
+  const [workoutCycle, setWorkoutCycle] = useLocalStorage('fitness_workout_cycle', ['Push', 'Pull', 'Legs', 'Rest']);
   const [showWizard, setShowWizard] = useState(false);
-  const [activeTab, setActiveTab] = useState('Push');
+  const [activeTab, setActiveTab] = useState(Object.keys(workoutPlan)[0] || 'Push');
   const [videoQuery, setVideoQuery] = useState(null);
   const [swappingId, setSwappingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
 
-  const handleWizardComplete = (newPlan) => {
-    setWorkoutPlan(newPlan);
-    setShowWizard(false);
-    alert('Plano atualizado com sucesso pela IA do Gemini!');
+  const handleWizardComplete = (data) => {
+    // data comes back as { cycle: [...], plan: {...} }
+    if (data && data.plan && data.cycle) {
+      setWorkoutPlan(data.plan);
+      setWorkoutCycle(data.cycle);
+      setActiveTab(Object.keys(data.plan)[0] || 'Treino');
+      setShowWizard(false);
+      alert('Plano atualizado com sucesso pela IA do Gemini!');
+    } else {
+      alert('Formato de resposta inesperado da IA. Tente novamente.');
+    }
   };
 
   const removeExercise = (day, index) => {
@@ -98,15 +106,16 @@ export function WorkoutManager() {
         </>
       )}
 
-      <div className="flex gap-sm" style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-        {['Push', 'Pull', 'Legs'].map(tab => (
+      <div className="flex gap-sm" style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+        {Object.keys(workoutPlan).map(tab => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)}
             style={{ 
               padding: '0.5rem 1rem', 
               color: activeTab === tab ? 'var(--accent-blue)' : 'var(--text-muted)',
-              borderBottom: activeTab === tab ? '2px solid var(--accent-blue)' : 'none'
+              borderBottom: activeTab === tab ? '2px solid var(--accent-blue)' : 'none',
+              whiteSpace: 'nowrap'
             }}
           >
             {tab}

@@ -9,11 +9,7 @@ export function History() {
   const [workoutPlan] = useLocalStorage('fitness_workout_plan', DEFAULT_WORKOUT_PLAN);
   
   // Combine all exercises into a flat list for selection
-  const allExercises = [
-    ...workoutPlan.Push,
-    ...workoutPlan.Pull,
-    ...workoutPlan.Legs
-  ];
+  const allExercises = Object.values(workoutPlan).flat();
   
   const [selectedExerciseId, setSelectedExerciseId] = useState(allExercises[0]?.id || '');
 
@@ -76,6 +72,14 @@ export function History() {
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
 
+  const getColorForType = (type) => {
+    if (!type) return 'var(--accent-blue)';
+    const colors = ['var(--accent-blue)', 'var(--accent-purple)', 'var(--accent-green)', 'var(--accent-red)', '#f59e0b', '#06b6d4', '#8b5cf6'];
+    let hash = 0;
+    for (let i = 0; i < type.length; i++) hash = type.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const sessionMap = useMemo(() => {
     const map = {};
     history.forEach(session => {
@@ -101,10 +105,8 @@ export function History() {
       const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const session = sessionMap[dateStr];
       let indicatorColor = null;
-      if (session) {
-        if (session.workoutType === 'Push') indicatorColor = 'var(--accent-blue)';
-        if (session.workoutType === 'Pull') indicatorColor = 'var(--accent-purple)';
-        if (session.workoutType === 'Legs') indicatorColor = 'var(--accent-green)';
+      if (session && !session.workoutType.toLowerCase().includes('descanso')) {
+        indicatorColor = getColorForType(session.workoutType);
       }
       const isSelected = selectedDate === dateStr;
       
@@ -189,7 +191,7 @@ export function History() {
             {selectedDate && (
               <div className="animate-fade-in" style={{ marginTop: '1rem' }}>
                 {sessionMap[selectedDate] ? (
-                  <div className="glass-panel" style={{ padding: '1rem', borderLeft: `4px solid ${sessionMap[selectedDate].workoutType === 'Push' ? 'var(--accent-blue)' : sessionMap[selectedDate].workoutType === 'Pull' ? 'var(--accent-purple)' : 'var(--accent-green)'}` }}>
+                  <div className="glass-panel" style={{ padding: '1rem', borderLeft: `4px solid ${getColorForType(sessionMap[selectedDate].workoutType)}` }}>
                     <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
                       <h3 style={{ fontSize: '1.1rem' }}>Treino {sessionMap[selectedDate].workoutType}</h3>
                       <span className="text-muted" style={{ fontSize: '0.875rem' }}>{selectedDate.split('-').reverse().join('/')}</span>
