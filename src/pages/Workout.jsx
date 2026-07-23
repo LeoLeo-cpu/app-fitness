@@ -69,6 +69,29 @@ export function Workout() {
         setTimeLeft(null);
         if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
         playBeep();
+        
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            // Service Worker approach for PWAs if available, fallback to Notification API
+            navigator.serviceWorker.ready.then(registration => {
+              registration.showNotification("Tempo esgotado!", {
+                body: "Pronto para a próxima série?",
+                icon: "/icon.svg",
+                vibrate: [200, 100, 200, 100, 500]
+              });
+            }).catch(() => {
+              new Notification("Tempo esgotado!", {
+                body: "Pronto para a próxima série?",
+                icon: "/icon.svg"
+              });
+            });
+          } catch (e) {
+            new Notification("Tempo esgotado!", {
+              body: "Pronto para a próxima série?",
+              icon: "/icon.svg"
+            });
+          }
+        }
       } else {
         setTimeLeft(remaining);
       }
@@ -79,6 +102,9 @@ export function Workout() {
 
   const startTimer = () => {
     initAudio(); // Apple iOS requires AudioContext to be resumed strictly during a user click
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
     const duration = profile.restTimer || 60;
     setTimerEndTime(Date.now() + duration * 1000);
     setTimeLeft(duration);
@@ -238,6 +264,33 @@ export function Workout() {
             <X size={20} />
           </button>
         </div>
+      )}
+
+      {timeLeft === null && !isRestDay && (
+        <button
+          onClick={startTimer}
+          style={{
+            position: 'fixed',
+            bottom: '90px',
+            right: '20px',
+            background: 'var(--accent-blue)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '60px',
+            height: '60px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
+            zIndex: 90,
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease',
+          }}
+          aria-label="Iniciar Descanso Global"
+        >
+          <Timer size={28} />
+        </button>
       )}
     </div>
   );

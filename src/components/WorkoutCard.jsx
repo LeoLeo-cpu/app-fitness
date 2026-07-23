@@ -63,17 +63,6 @@ export const WorkoutCard = React.memo(function WorkoutCard({ exercise, onLogSet,
                 value={log.reps} 
                 onChange={e => handleLogChange(i, 'reps', e.target.value)}
               />
-              <button 
-                className="btn-secondary" 
-                style={{ padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderColor: 'var(--accent-blue)' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onSetComplete) onSetComplete();
-                }}
-                title="Iniciar Descanso"
-              >
-                <Timer size={18} color="var(--accent-blue)" />
-              </button>
             </div>
           ))}
           
