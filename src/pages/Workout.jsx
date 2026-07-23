@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
 
 let globalAudioCtx = null;
+let silentOscillator = null;
 
 const initAudio = () => {
   if (!globalAudioCtx) {
@@ -15,6 +16,27 @@ const initAudio = () => {
   }
   if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
     globalAudioCtx.resume();
+  }
+};
+
+const startSilentAudio = () => {
+  if (!globalAudioCtx) return;
+  stopSilentAudio(); // Ensure we don't have multiple running
+  silentOscillator = globalAudioCtx.createOscillator();
+  const gainNode = globalAudioCtx.createGain();
+  gainNode.gain.value = 0.0001; // practically silent
+  silentOscillator.connect(gainNode);
+  gainNode.connect(globalAudioCtx.destination);
+  silentOscillator.start();
+};
+
+const stopSilentAudio = () => {
+  if (silentOscillator) {
+    try {
+      silentOscillator.stop();
+      silentOscillator.disconnect();
+    } catch (e) {}
+    silentOscillator = null;
   }
 };
 
@@ -67,6 +89,8 @@ export function Workout() {
         clearInterval(interval);
         setTimerEndTime(null);
         setTimeLeft(null);
+        stopSilentAudio();
+        
         if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
         playBeep();
         
@@ -108,6 +132,7 @@ export function Workout() {
     const duration = profile.restTimer || 60;
     setTimerEndTime(Date.now() + duration * 1000);
     setTimeLeft(duration);
+    startSilentAudio(); // Keeps the app running in the background for the notification
   };
 
   const adjustTimer = (amount) => {
@@ -116,6 +141,7 @@ export function Workout() {
     if (newEndTime <= Date.now()) {
       setTimerEndTime(null);
       setTimeLeft(null);
+      stopSilentAudio();
     } else {
       setTimerEndTime(newEndTime);
       setTimeLeft(Math.ceil((newEndTime - Date.now()) / 1000));
@@ -125,6 +151,7 @@ export function Workout() {
   const closeTimer = () => {
     setTimerEndTime(null);
     setTimeLeft(null);
+    stopSilentAudio();
   };
 
   const handleLogExercise = (logData) => {
