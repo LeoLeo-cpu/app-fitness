@@ -7,8 +7,6 @@ import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
 
 let globalAudioCtx = null;
-let silentAudioEl = null;
-
 const initAudio = () => {
   if (!globalAudioCtx) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -19,22 +17,6 @@ const initAudio = () => {
   }
 };
 
-const startSilentAudio = () => {
-  if (!silentAudioEl) {
-    // 1-sample silent WAV
-    silentAudioEl = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-    silentAudioEl.loop = true;
-    silentAudioEl.volume = 0.01;
-  }
-  silentAudioEl.play().catch(e => console.warn("Audio play blocked", e));
-};
-
-const stopSilentAudio = () => {
-  if (silentAudioEl) {
-    silentAudioEl.pause();
-    silentAudioEl.currentTime = 0;
-  }
-};
 
 const playBeep = () => {
   if (!globalAudioCtx) return;
@@ -92,7 +74,6 @@ export function Workout() {
         clearInterval(interval);
         setTimerEndTime(null);
         setTimeLeft(null);
-        stopSilentAudio();
         
         if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
         playBeep();
@@ -135,7 +116,6 @@ export function Workout() {
     const duration = profile.restTimer || 60;
     setTimerEndTime(Date.now() + duration * 1000);
     setTimeLeft(duration);
-    startSilentAudio(); // Keeps the app running in the background for the notification
   };
 
   const adjustTimer = (amount) => {
@@ -144,7 +124,6 @@ export function Workout() {
     if (newEndTime <= Date.now()) {
       setTimerEndTime(null);
       setTimeLeft(null);
-      stopSilentAudio();
     } else {
       setTimerEndTime(newEndTime);
       setTimeLeft(Math.ceil((newEndTime - Date.now()) / 1000));
@@ -154,7 +133,6 @@ export function Workout() {
   const closeTimer = () => {
     setTimerEndTime(null);
     setTimeLeft(null);
-    stopSilentAudio();
   };
 
   const handleLogExercise = (logData) => {
