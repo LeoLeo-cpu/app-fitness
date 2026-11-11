@@ -57,7 +57,7 @@ Lembre-se: O array "cycle" deve ditar a ordem exata dos dias na semana. Use a pa
     } else if (errorMsg.includes('API key not valid')) {
       errorMsg = "A chave da API é inválida. Verifique se copiou corretamente (sem espaços no final).";
     }
-    throw new Error('Falha ao gerar treino: ' + errorMsg);
+    throw new Error('Falha ao gerar treino: ' + errorMsg, { cause: error });
   }
 }
 
@@ -127,6 +127,6 @@ Retorne ESTRITAMENTE E APENAS um objeto JSON válido sem formatações Markdown 
     } else if (errorMsg.includes('API key not valid')) {
       errorMsg = "A chave da API é inválida. Verifique se copiou corretamente (sem espaços no final).";
     }
-    throw new Error('Falha ao gerar cardápio: ' + errorMsg);
+    throw new Error('Falha ao gerar cardápio: ' + errorMsg, { cause: error });
   }
 }

@@ -1,8 +1,8 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { DEFAULT_USER_PROFILE } from '../data/defaultData';
+import { DEFAULT_USER_PROFILE, DEFAULT_WORKOUT_PLAN } from '../data/defaultData';
 import { WorkoutCard } from '../components/WorkoutCard';
-import { Check, Edit2, HeartPulse, Timer, X, Plus, Minus } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Check, Edit2, HeartPulse, Timer, X, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
 
@@ -16,7 +16,6 @@ const initAudio = () => {
     globalAudioCtx.resume();
   }
 };
-
 
 const playBeep = () => {
   if (!globalAudioCtx) return;
@@ -37,13 +36,13 @@ const playBeep = () => {
 
 export function Workout() {
   const navigate = useNavigate();
-  const [workoutPlan, setWorkoutPlan] = useLocalStorage('fitness_workout_plan', { Push: [], Pull: [], Legs: [] });
+  const [workoutPlan, setWorkoutPlan] = useLocalStorage('fitness_workout_plan', DEFAULT_WORKOUT_PLAN);
   const [currentDayIndex, setCurrentDayIndex] = useLocalStorage('fitness_workout_current_day', 0);
   const [workoutCycle] = useLocalStorage('fitness_workout_cycle', ['Push', 'Pull', 'Legs', 'Rest']);
   const [history, setHistory] = useLocalStorage('fitness_workout_history', []);
   const [profile] = useLocalStorage('fitness_user_profile', DEFAULT_USER_PROFILE);
   
-  // Safe bounds check
+  // Verificação de limites
   const safeIndex = currentDayIndex >= workoutCycle.length ? 0 : currentDayIndex;
   if (currentDayIndex >= workoutCycle.length) {
     setCurrentDayIndex(0);
@@ -60,11 +59,23 @@ export function Workout() {
   const [timerEndTime, setTimerEndTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
 
+  // Mapeamento dos recordes pessoais (PRs) de cada exercício no histórico
+  const prMap = useMemo(() => {
+    const map = {};
+    history.forEach(session => {
+      session.exercises?.forEach(ex => {
+        const currentStored = map[ex.exerciseId] || 0;
+        const maxInSession = Math.max(0, ...(ex.sets?.map(s => Number(s.load) || 0) || [0]));
+        if (maxInSession > currentStored) {
+          map[ex.exerciseId] = maxInSession;
+        }
+      });
+    });
+    return map;
+  }, [history]);
+
   useEffect(() => {
-    if (!timerEndTime) {
-      setTimeLeft(null);
-      return;
-    }
+    if (!timerEndTime) return;
     
     const interval = setInterval(() => {
       const now = Date.now();
@@ -80,22 +91,23 @@ export function Workout() {
         
         if ('Notification' in window && Notification.permission === 'granted') {
           try {
-            // Service Worker approach for PWAs if available, fallback to Notification API
             navigator.serviceWorker.ready.then(registration => {
-              registration.showNotification("Tempo esgotado!", {
-                body: "Pronto para a próxima série?",
+              registration.showNotification("Tempo de Descanso Concluído!", {
+                body: "Hora de iniciar a próxima série com força total!",
                 icon: "/icon.svg",
                 vibrate: [200, 100, 200, 100, 500]
               });
-            }).catch(() => {
-              new Notification("Tempo esgotado!", {
-                body: "Pronto para a próxima série?",
+            }).catch(swErr => {
+              console.warn('Fallback to standard notification:', swErr);
+              new Notification("Tempo de Descanso Concluído!", {
+                body: "Hora de iniciar a próxima série!",
                 icon: "/icon.svg"
               });
             });
-          } catch (e) {
-            new Notification("Tempo esgotado!", {
-              body: "Pronto para a próxima série?",
+          } catch (notifErr) {
+            console.warn('Failed to show notification:', notifErr);
+            new Notification("Tempo de Descanso Concluído!", {
+              body: "Hora de iniciar a próxima série!",
               icon: "/icon.svg"
             });
           }
@@ -108,13 +120,14 @@ export function Workout() {
     return () => clearInterval(interval);
   }, [timerEndTime]);
 
-  const startTimer = () => {
-    initAudio(); // Apple iOS requires AudioContext to be resumed strictly during a user click
+  const startTimer = (customDuration) => {
+    initAudio();
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      Notification.requestPermission();
+      Notification.requestPermission().catch(permErr => console.warn('Notification permission error:', permErr));
     }
-    const duration = profile.restTimer || 60;
-    setTimerEndTime(Date.now() + duration * 1000);
+    const duration = customDuration || profile.restTimer || 60;
+    const now = new Date().getTime();
+    setTimerEndTime(now + duration * 1000);
     setTimeLeft(duration);
   };
 
@@ -166,138 +179,277 @@ export function Workout() {
     };
     
     setHistory([session, ...history]);
-    // Advance to next day
+    // Avança para o próximo dia no ciclo
     setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
     setSessionLogs([]);
+    navigate('/');
   };
 
   const advanceRestDay = () => {
     setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
   };
 
+  const completedCount = sessionLogs.length;
+  const totalCount = exercises.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
   return (
-    <div className="p-md animate-fade-in" style={{ paddingBottom: '100px' }}>
-      <div className="flex justify-between items-center" style={{ marginBottom: '1.5rem' }}>
-        <div className="flex items-center gap-sm">
-          <h1>Treino de Hoje</h1>
-          <button style={{ color: 'var(--text-muted)' }} onClick={() => navigate('/workout-manager')}>
-            <Edit2 size={20} />
-          </button>
+    <div className="animate-fade-in" style={{ paddingBottom: '110px' }}>
+      {/* Header da Tela de Treino */}
+      <div className="flex justify-between items-center" style={{ marginBottom: '1.25rem' }}>
+        <div>
+          <div className="flex items-center gap-sm">
+            <h1 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Treino de Hoje</h1>
+            <button 
+              aria-label="Gerenciar fichas de treino"
+              style={{ color: 'var(--text-secondary)', padding: '0.3rem' }} 
+              onClick={() => navigate('/workout-manager')}
+            >
+              <Edit2 size={18} />
+            </button>
+          </div>
+          <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+            {isRestDay ? 'Descanso programado' : `${completedCount} de ${totalCount} exercícios concluídos`}
+          </p>
         </div>
+
         <div className="flex items-center gap-sm">
+          {/* Botão de Monitor Cardíaco Bluetooth */}
           {!isConnected ? (
-            <button onClick={connect} disabled={isConnecting} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <HeartPulse size={16} />
-              {isConnecting ? '...' : 'Ligar'}
+            <button 
+              onClick={connect} 
+              disabled={isConnecting} 
+              className="clay-pill"
+              style={{ 
+                color: 'var(--status-danger)', 
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                background: 'rgba(239, 68, 68, 0.08)'
+              }}
+            >
+              <HeartPulse size={15} />
+              <span>{isConnecting ? '...' : 'Monitor'}</span>
             </button>
           ) : (
-            <button aria-label="Desconectar Monitor Cardíaco" onClick={disconnect} style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', padding: '0.25rem 0.75rem', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>
-              <HeartPulse size={16} />
-              {heartRate ? `${heartRate} bpm` : '--'}
+            <button 
+              aria-label="Desconectar Monitor Cardíaco" 
+              onClick={disconnect} 
+              className="clay-pill"
+              style={{ 
+                color: 'var(--status-danger)', 
+                borderColor: 'rgba(239, 68, 68, 0.5)',
+                background: 'rgba(239, 68, 68, 0.18)',
+                boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              <HeartPulse size={15} />
+              <span>{heartRate ? `${heartRate} bpm` : '--'}</span>
             </button>
           )}
-          <span style={{ background: 'var(--accent-blue)', padding: '0.25rem 0.75rem', borderRadius: 'var(--radius-full)', fontWeight: 'bold' }}>
+
+          {/* Badge do Ciclo de Treino Atual */}
+          <span 
+            className="clay-pill" 
+            style={{ 
+              color: 'var(--accent-primary)', 
+              borderColor: 'rgba(6, 182, 212, 0.4)',
+              background: 'rgba(6, 182, 212, 0.12)',
+              fontWeight: '700'
+            }}
+          >
             {currentWorkoutType}
           </span>
         </div>
       </div>
       
-      {error && <p style={{ color: 'var(--accent-red)', fontSize: '0.8rem', marginBottom: '1rem' }}>{error}</p>}
+      {error && (
+        <p style={{ color: 'var(--status-danger)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          {error}
+        </p>
+      )}
+
+      {/* Barra de Progresso do Treino Ativo */}
+      {!isRestDay && totalCount > 0 && (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <div style={{
+            width: '100%',
+            height: '6px',
+            background: 'var(--surface-card)',
+            borderRadius: '9999px',
+            overflow: 'hidden',
+            border: '1px solid rgba(255, 255, 255, 0.04)'
+          }}>
+            <div 
+              style={{
+                width: `${progressPercent}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, #06B6D4, #10B981)',
+                transition: 'width 0.4s ease'
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {isRestDay ? (
-        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-          <h2 style={{ color: 'var(--accent-green)' }}>Dia de Descanso</h2>
-          <p className="text-muted" style={{ margin: '1rem 0' }}>Recupere seus músculos e se prepare para o próximo ciclo.</p>
-          <button className="btn-primary" onClick={advanceRestDay}>Pular Descanso</button>
+        <div className="clay-card" style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '20px',
+            background: 'rgba(16, 185, 129, 0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.25rem auto',
+            color: 'var(--status-success)'
+          }}>
+            💤
+          </div>
+          <h2 style={{ color: 'var(--status-success)', fontSize: '1.4rem', fontWeight: '700' }}>
+            Dia de Recuperação
+          </h2>
+          <p className="text-muted" style={{ margin: '0.75rem auto 1.75rem auto', maxWidth: '420px', fontSize: '0.9rem' }}>
+            O descanso é essencial para a hipertrofia e reconstrução muscular. Mantenha boa hidratação e sono regular.
+          </p>
+          <button className="clay-btn-primary" onClick={advanceRestDay}>
+            Pular Descanso e Ir para o Próximo Treino <ArrowRight size={18} />
+          </button>
         </div>
       ) : (
         <>
           {exercises.map(ex => {
             const existingLog = sessionLogs.find(l => l.exerciseId === ex.id);
+            const prevMax = prMap[ex.id] || 0;
             return (
               <WorkoutCard 
                 key={ex.id} 
                 exercise={ex} 
                 existingLog={existingLog}
+                previousMaxLoad={prevMax}
                 onLogSet={handleLogExercise} 
                 onSwap={handleSwapExercise} 
-                onSetComplete={startTimer} 
+                onSetComplete={() => startTimer(profile.restTimer || 60)} 
               />
             );
           })}
 
           <button 
-            className="btn-primary" 
-            style={{ width: '100%', marginTop: '1rem', opacity: sessionLogs.length === exercises.length ? 1 : 0.5 }}
+            type="button"
+            className="clay-btn-primary" 
+            style={{ 
+              width: '100%', 
+              marginTop: '1.5rem', 
+              padding: '1rem',
+              fontSize: '1.05rem',
+              opacity: sessionLogs.length > 0 ? 1 : 0.6 
+            }}
             onClick={completeWorkout}
             disabled={sessionLogs.length === 0}
           >
             <Check size={20} />
-            Concluir Sessão de Treino
+            Concluir Sessão de Treino ({sessionLogs.length}/{exercises.length})
           </button>
         </>
       )}
 
+      {/* Barra Flutuante de Timer de Descanso (Estilo Pílula Tátil Clay) */}
       {timeLeft !== null && (
         <div style={{
           position: 'fixed',
-          bottom: '80px',
+          bottom: '86px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(20, 20, 20, 0.95)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid var(--accent-purple)',
-          borderRadius: '2rem',
-          padding: '0.5rem 1rem',
+          background: 'rgba(30, 41, 59, 0.95)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(6, 182, 212, 0.4)',
+          borderRadius: '9999px',
+          padding: '0.6rem 1.25rem',
           display: 'flex',
           alignItems: 'center',
           gap: '1rem',
-          boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.25)',
           zIndex: 100,
-          animation: 'slideUp 0.3s ease-out'
+          animation: 'fadeIn 0.25s ease-out'
         }}>
-          <Timer size={24} color="var(--accent-purple)" />
-          <span style={{ fontSize: '1.5rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
-            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-          </span>
-          <div className="flex items-center gap-sm">
-            <button onClick={() => adjustTimer(-15)} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '50%', padding: '0.25rem' }}>
-              <Minus size={16} />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            color: 'var(--accent-primary)'
+          }}>
+            <Timer size={22} />
+            <span style={{ fontSize: '1.4rem', fontWeight: '800', fontFamily: 'monospace' }}>
+              {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-xs">
+            <button 
+              type="button"
+              aria-label="Diminuir 15 segundos"
+              onClick={() => adjustTimer(-15)} 
+              className="clay-stepper-btn"
+              style={{ width: '32px', height: '32px', fontSize: '0.75rem' }}
+            >
+              -15s
             </button>
-            <button onClick={() => adjustTimer(15)} style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '50%', padding: '0.25rem' }}>
-              <Plus size={16} />
+            <button 
+              type="button"
+              aria-label="Aumentar 30 segundos"
+              onClick={() => adjustTimer(30)} 
+              className="clay-stepper-btn"
+              style={{ width: '32px', height: '32px', fontSize: '0.75rem' }}
+            >
+              +30s
             </button>
           </div>
-          <button onClick={closeTimer} style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-            <X size={20} />
+
+          <button 
+            type="button"
+            onClick={closeTimer} 
+            style={{ 
+              color: 'var(--text-secondary)', 
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '50%',
+              padding: '0.35rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Pular Descanso"
+          >
+            <X size={18} />
           </button>
         </div>
       )}
 
+      {/* Botão Flutuante Rápido para Iniciar Descanso quando inativo */}
       {timeLeft === null && !isRestDay && (
         <button
-          onClick={startTimer}
+          type="button"
+          onClick={() => startTimer(profile.restTimer || 60)}
           style={{
             position: 'fixed',
             bottom: '90px',
             right: '20px',
-            background: 'var(--accent-blue)',
+            background: 'linear-gradient(135deg, #06B6D4, #0891B2)',
             color: 'white',
             border: 'none',
             borderRadius: '50%',
-            width: '60px',
-            height: '60px',
+            width: '56px',
+            height: '56px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
-            zIndex: 90,
-            cursor: 'pointer',
-            transition: 'transform 0.2s ease',
+            boxShadow: '0 6px 18px rgba(6, 182, 212, 0.45)',
+            zIndex: 40,
+            cursor: 'pointer'
           }}
-          aria-label="Iniciar Descanso Global"
+          aria-label="Iniciar Descanso"
+          title="Iniciar Timer de Descanso"
         >
-          <Timer size={28} />
+          <Timer size={26} />
         </button>
       )}
     </div>

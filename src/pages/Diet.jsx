@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { ProgressBar } from '../components/ProgressBar';
 import { DEFAULT_USER_PROFILE } from '../data/defaultData';
-import { PlusCircle, Search, Sparkles } from 'lucide-react';
+import { PlusCircle, Search, Sparkles, Droplet, Trash2, Utensils } from 'lucide-react';
 import { DietWizard } from '../components/DietWizard';
 
 export function Diet() {
@@ -14,7 +14,7 @@ export function Diet() {
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [newFood, setNewFood] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+  const [newFood, setNewFood] = useState({ name: '', calories: '', protein: '', carbs: '', fat: '', meal: 'Geral' });
   const [search, setSearch] = useState('');
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -25,12 +25,14 @@ export function Diet() {
   const todaysWater = todayWaterIndex >= 0 ? waterLog[todayWaterIndex].ml : 0;
 
   const totals = todaysFoods.reduce((acc, food) => {
-    acc.calories += Number(food.calories);
-    acc.protein += Number(food.protein);
-    acc.carbs += Number(food.carbs);
-    acc.fat += Number(food.fat);
+    acc.calories += Number(food.calories) || 0;
+    acc.protein += Number(food.protein) || 0;
+    acc.carbs += Number(food.carbs) || 0;
+    acc.fat += Number(food.fat) || 0;
     return acc;
   }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+  const targetCalories = Number(profile.calTarget) || 2000;
 
   const handleAddFood = (foodData) => {
     const updatedLog = [...mealsLog];
@@ -41,13 +43,22 @@ export function Diet() {
     }
     setMealsLog(updatedLog);
     
-    // Auto-save to library if not exists
+    // Salva na biblioteca para buscas futuras caso não exista
     if (!foodLibrary.some(f => f.name.toLowerCase() === foodData.name.toLowerCase())) {
-      setFoodLibrary([...foodLibrary, { ...foodData, id: Date.now().toString() }]);
+      setFoodLibrary([...foodLibrary, { ...foodData, id: `${foodData.name.toLowerCase().replace(/\s+/g, '_')}_${foodLibrary.length + 1}` }]);
     }
     
     setShowAddForm(false);
-    setNewFood({ name: '', calories: '', protein: '', carbs: '', fat: '' });
+    setNewFood({ name: '', calories: '', protein: '', carbs: '', fat: '', meal: 'Geral' });
+  };
+
+  const handleRemoveFood = (foodIndex) => {
+    if (todaysLogIndex < 0) return;
+    const updatedLog = [...mealsLog];
+    const currentFoods = [...updatedLog[todaysLogIndex].foods];
+    currentFoods.splice(foodIndex, 1);
+    updatedLog[todaysLogIndex] = { ...updatedLog[todaysLogIndex], foods: currentFoods };
+    setMealsLog(updatedLog);
   };
 
   const handleAddWater = (ml) => {
@@ -58,6 +69,14 @@ export function Diet() {
       updated.push({ date: todayStr, ml });
     }
     setWaterLog(updated);
+  };
+
+  const handleResetWater = () => {
+    const updated = [...waterLog];
+    if (todayWaterIndex >= 0) {
+      updated[todayWaterIndex].ml = 0;
+      setWaterLog(updated);
+    }
   };
 
   const handleApplyDietPlan = (plan) => {
@@ -78,166 +97,339 @@ export function Diet() {
   const filteredLibrary = foodLibrary.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="p-md animate-fade-in" style={{ paddingBottom: '100px' }}>
+    <div className="animate-fade-in" style={{ paddingBottom: '100px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1>Dieta de Hoje</h1>
-        <button className="btn-primary" onClick={() => setShowWizard(true)} style={{ background: 'var(--accent-purple)', borderColor: 'var(--accent-purple)', padding: '0.5rem 1rem' }}>
-          <Sparkles size={18} /> Nutricionista IA
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Dieta & Nutrição</h1>
+          <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+            Acompanhe seu balanço calórico e macronutrientes
+          </p>
+        </div>
+
+        <button 
+          className="clay-btn-secondary" 
+          onClick={() => setShowWizard(true)} 
+          style={{ borderColor: 'rgba(124, 58, 237, 0.4)', color: '#FFFFFF', gap: '0.4rem', padding: '0.6rem 0.9rem', fontSize: '0.82rem' }}
+        >
+          <Sparkles size={16} color="var(--accent-secondary)" /> IA Nutricionista
         </button>
       </div>
       
       {showWizard && <DietWizard onComplete={handleApplyDietPlan} onCancel={() => setShowWizard(false)} />}
 
-      <div className="glass-panel" style={{ padding: '1.5rem', marginTop: '1.5rem', marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Progresso Diário</h2>
-        <ProgressBar label="Calorias (kcal)" current={totals.calories} max={profile.calTarget} color="var(--accent-blue)" />
-        <ProgressBar label="Proteínas (g)" current={totals.protein} max={profile.macros.protein} color="var(--accent-purple)" />
-        <ProgressBar label="Carboidratos (g)" current={totals.carbs} max={profile.macros.carbs} color="var(--accent-green)" />
-        <ProgressBar label="Gorduras (g)" current={totals.fat} max={profile.macros.fat} color="#f59e0b" />
+      {/* Card do Progresso Diário */}
+      <div className="clay-card" style={{ padding: '1.5rem' }}>
+        <div className="flex justify-between items-center" style={{ marginBottom: '1.25rem' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#FFFFFF' }}>Balanço do Dia</h2>
+          <span className="clay-pill" style={{ color: 'var(--status-success)', borderColor: 'rgba(16, 185, 129, 0.3)' }}>
+            Meta: {targetCalories} kcal
+          </span>
+        </div>
 
-        <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="flex justify-between items-center" style={{ marginBottom: '0.5rem' }}>
-            <span style={{ fontWeight: 'bold', color: 'var(--accent-blue)' }}>💧 Água</span>
-            <span style={{ fontSize: '0.875rem' }}>{todaysWater} / 2500 ml</span>
+        {/* Barras de Progresso de Calorias e Macros */}
+        <ProgressBar label="Calorias (kcal)" current={totals.calories} max={targetCalories} color="var(--accent-primary)" />
+        <ProgressBar label="Proteínas (g)" current={totals.protein} max={profile.macros?.protein || 140} color="var(--accent-secondary)" />
+        <ProgressBar label="Carboidratos (g)" current={totals.carbs} max={profile.macros?.carbs || 200} color="var(--status-success)" />
+        <ProgressBar label="Gorduras (g)" current={totals.fat} max={profile.macros?.fat || 60} color="var(--status-streak)" />
+
+        {/* Seção de Hidratação / Água */}
+        <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+          <div className="flex justify-between items-center" style={{ marginBottom: '0.6rem' }}>
+            <span style={{ fontWeight: '700', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.9rem' }}>
+              <Droplet size={16} /> Água Ingerida
+            </span>
+            <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+              <strong style={{ color: '#FFFFFF' }}>{todaysWater}</strong> / 2500 ml
+            </span>
           </div>
-          <div className="progress-container" style={{ marginBottom: '1rem', height: '12px' }}>
-            <div className="progress-fill" style={{ width: `${Math.min(100, (todaysWater / 2500) * 100)}%`, background: 'var(--accent-blue)' }}></div>
+
+          <div style={{ 
+            width: '100%', 
+            height: '10px', 
+            background: '#0D1424', 
+            borderRadius: '9999px', 
+            overflow: 'hidden',
+            marginBottom: '1rem',
+            border: '1px solid rgba(255, 255, 255, 0.04)'
+          }}>
+            <div 
+              style={{ 
+                width: `${Math.min(100, (todaysWater / 2500) * 100)}%`, 
+                height: '100%', 
+                background: 'linear-gradient(90deg, #06B6D4, #3B82F6)',
+                borderRadius: '9999px',
+                transition: 'width 0.4s ease'
+              }} 
+            />
           </div>
+
           <div className="flex gap-sm">
-            <button className="btn-secondary" style={{ flex: 1, padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderColor: 'var(--accent-blue)' }} onClick={() => handleAddWater(250)}>+ 250ml</button>
-            <button className="btn-secondary" style={{ flex: 1, padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderColor: 'var(--accent-blue)' }} onClick={() => handleAddWater(500)}>+ 500ml</button>
+            <button 
+              type="button"
+              className="clay-btn-secondary" 
+              style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} 
+              onClick={() => handleAddWater(250)}
+            >
+              + 250 ml (Copo)
+            </button>
+            <button 
+              type="button"
+              className="clay-btn-secondary" 
+              style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} 
+              onClick={() => handleAddWater(500)}
+            >
+              + 500 ml (Garrafa)
+            </button>
+            {todaysWater > 0 && (
+              <button 
+                type="button"
+                className="clay-btn-secondary" 
+                style={{ padding: '0.6rem 0.8rem', color: 'var(--text-secondary)' }} 
+                onClick={handleResetWater}
+                title="Zerar Água"
+              >
+                Zerar
+              </button>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Cardápio Sugerido pela IA (se houver) */}
       {todaysPlan && (
-        <div style={{ marginBottom: '2rem' }}>
+        <div className="clay-card" style={{ padding: '1.5rem' }}>
           <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.2rem', color: 'var(--accent-purple)' }}>
-              Cardápio Sugerido (Metas)
+            <h2 style={{ fontSize: '1.15rem', color: 'var(--accent-secondary)', fontWeight: '700' }}>
+              Cardápio Sugerido pela IA
             </h2>
-            <button className="btn-secondary" onClick={() => setShowWizard(true)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
-              Alterar
+            <button 
+              className="clay-pill" 
+              onClick={() => setShowWizard(true)} 
+              style={{ fontSize: '0.75rem', color: 'var(--accent-secondary)', cursor: 'pointer' }}
+            >
+              Reajustar
             </button>
           </div>
+
           {todaysPlan.map((meal, mIdx) => (
-            <div key={mIdx} style={{ marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+            <div key={mIdx} style={{ marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.5rem', color: '#FFFFFF' }}>
                 {meal.mealName}
               </h3>
-              {meal.foods.map((f, fIdx) => {
-                const isConsumed = todaysFoods.some(tf => tf.name === f.name && tf.meal === meal.mealName);
-                
-                return (
-                  <div key={fIdx} className="glass-panel flex justify-between items-center" style={{ padding: '0.75rem', marginBottom: '0.5rem', opacity: isConsumed ? 0.6 : 1 }}>
-                    <div>
-                      <div style={{ fontWeight: '500', textDecoration: isConsumed ? 'line-through' : 'none' }}>{f.name}</div>
-                      <div className="text-muted" style={{ fontSize: '0.8rem' }}>{f.calories} kcal</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {meal.foods?.map((f, fIdx) => {
+                  const isConsumed = todaysFoods.some(tf => tf.name === f.name && tf.meal === meal.mealName);
+                  
+                  return (
+                    <div 
+                      key={fIdx} 
+                      style={{ 
+                        background: '#131B2E',
+                        padding: '0.75rem 1rem', 
+                        borderRadius: '12px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        opacity: isConsumed ? 0.6 : 1,
+                        border: '1px solid rgba(255, 255, 255, 0.04)'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem', textDecoration: isConsumed ? 'line-through' : 'none' }}>
+                          {f.name}
+                        </div>
+                        <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                          {f.calories} kcal • P: {f.protein}g • C: {f.carbs}g • G: {f.fat}g
+                        </div>
+                      </div>
+
+                      {!isConsumed ? (
+                        <button 
+                          className="clay-pill" 
+                          style={{ color: 'var(--status-success)', borderColor: 'rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.1)' }}
+                          onClick={() => handleAddFood({ ...f, meal: meal.mealName })}
+                        >
+                          Consumir
+                        </button>
+                      ) : (
+                        <span style={{ color: 'var(--status-success)', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                          ✓
+                        </span>
+                      )}
                     </div>
-                    {!isConsumed && (
-                      <button 
-                        className="btn-primary" 
-                        style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem', background: 'transparent', border: '1px solid var(--accent-purple)', color: 'var(--accent-purple)' }}
-                        onClick={() => handleAddFood({ ...f, meal: meal.mealName })}
-                      >
-                        Consumi
-                      </button>
-                    )}
-                    {isConsumed && <span style={{ color: 'var(--accent-green)', fontSize: '0.85rem', fontWeight: 'bold' }}>✓</span>}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex justify-between items-center" style={{ marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.2rem' }}>Refeições Registradas</h2>
-        <button className="btn-primary" onClick={() => setShowAddForm(!showAddForm)} style={{ padding: '0.5rem 1rem' }}>
-          <PlusCircle size={18} /> Add
-        </button>
-      </div>
-
-      {showAddForm && (
-        <div className="glass-panel animate-fade-in" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>Registrar Alimento</h3>
-          
-          <div className="flex items-center gap-sm" style={{ marginBottom: '1rem' }}>
-            <Search size={18} className="text-muted" />
-            <input 
-              type="text" 
-              placeholder="Buscar na biblioteca..." 
-              className="input-field" 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-
-          {search && filteredLibrary.length > 0 && (
-            <div style={{ marginBottom: '1rem', maxHeight: '150px', overflowY: 'auto' }}>
-              {filteredLibrary.map(f => (
-                <div key={f.id} className="flex justify-between items-center" style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => handleAddFood(f)}>
-                  <span>{f.name}</span>
-                  <span className="text-muted" style={{ fontSize: '0.8rem' }}>{f.calories} kcal</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-            <input className="input-field" style={{ gridColumn: 'span 2' }} placeholder="Nome do Alimento" value={newFood.name} onChange={e => setNewFood({...newFood, name: e.target.value})} />
-            <input className="input-field" type="number" placeholder="Calorias" value={newFood.calories} onChange={e => setNewFood({...newFood, calories: e.target.value})} />
-            <input className="input-field" type="number" placeholder="Proteína (g)" value={newFood.protein} onChange={e => setNewFood({...newFood, protein: e.target.value})} />
-            <input className="input-field" type="number" placeholder="Carboidrato (g)" value={newFood.carbs} onChange={e => setNewFood({...newFood, carbs: e.target.value})} />
-            <input className="input-field" type="number" placeholder="Gordura (g)" value={newFood.fat} onChange={e => setNewFood({...newFood, fat: e.target.value})} />
-          </div>
-          
+      {/* Seção: Refeições Registradas */}
+      <div>
+        <div className="flex justify-between items-center" style={{ marginBottom: '0.85rem' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#FFFFFF' }}>Refeições Registradas</h2>
           <button 
-            className="btn-primary" 
-            style={{ width: '100%', marginTop: '1rem' }}
-            disabled={!newFood.name || !newFood.calories}
-            onClick={() => handleAddFood(newFood)}
+            className="clay-btn-primary" 
+            onClick={() => setShowAddForm(!showAddForm)} 
+            style={{ padding: '0.55rem 1rem', fontSize: '0.82rem' }}
           >
-            Salvar Registro
+            <PlusCircle size={16} /> Adicionar Alimento
           </button>
         </div>
-      )}
 
-      {todaysFoods.length === 0 ? (
-        <p className="text-muted text-center" style={{ marginTop: '2rem' }}>Nenhum alimento registrado hoje.</p>
-      ) : (
-        Object.entries(todaysFoods.reduce((acc, f) => {
-          let m = f.meal || 'Geral';
-          let n = f.name;
-          // Suporte ao formato antigo (Café - Ovo)
-          if (!f.meal && f.name.includes(' - ')) {
-            const parts = f.name.split(' - ');
-            m = parts[0];
-            n = parts.slice(1).join(' - ');
-          }
-          if (!acc[m]) acc[m] = [];
-          acc[m].push({ ...f, display_name: n });
-          return acc;
-        }, {})).map(([mealName, foods]) => (
-          <div key={mealName} style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', color: 'var(--accent-purple)', marginBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>{mealName}</h3>
-            {foods.map((f, i) => (
-              <div key={i} className="glass-panel flex justify-between items-center" style={{ padding: '1rem', marginBottom: '0.5rem' }}>
+        {/* Modal / Card de Inserção de Alimento */}
+        {showAddForm && (
+          <div className="clay-card animate-fade-in" style={{ padding: '1.5rem', marginBottom: '1.25rem', border: '1px solid var(--accent-primary)' }}>
+            <h3 style={{ marginBottom: '1rem', color: '#FFFFFF' }}>Registrar Novo Alimento</h3>
+            
+            <div className="flex items-center gap-sm" style={{ marginBottom: '1rem' }}>
+              <Search size={18} className="text-muted" />
+              <input 
+                type="text" 
+                placeholder="Buscar na biblioteca salva..." 
+                className="input-field" 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ background: '#131B2E' }}
+              />
+            </div>
+
+            {search && filteredLibrary.length > 0 && (
+              <div style={{ marginBottom: '1rem', maxHeight: '160px', overflowY: 'auto', background: '#0D1424', borderRadius: '12px', padding: '0.5rem' }}>
+                {filteredLibrary.map(f => (
+                  <div 
+                    key={f.id} 
+                    className="flex justify-between items-center" 
+                    style={{ padding: '0.5rem 0.75rem', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s' }} 
+                    onClick={() => handleAddFood(f)}
+                  >
+                    <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>{f.name}</span>
+                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>{f.calories} kcal</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.65rem' }}>
+              <input 
+                className="input-field" 
+                style={{ gridColumn: 'span 2', background: '#131B2E' }} 
+                placeholder="Nome do Alimento (ex: Frango Grelhado)" 
+                value={newFood.name} 
+                onChange={e => setNewFood({...newFood, name: e.target.value})} 
+              />
+              <input 
+                className="input-field" 
+                type="number" 
+                placeholder="Calorias (kcal)" 
+                value={newFood.calories} 
+                onChange={e => setNewFood({...newFood, calories: e.target.value})} 
+                style={{ background: '#131B2E' }}
+              />
+              <input 
+                className="input-field" 
+                type="number" 
+                placeholder="Proteína (g)" 
+                value={newFood.protein} 
+                onChange={e => setNewFood({...newFood, protein: e.target.value})} 
+                style={{ background: '#131B2E' }}
+              />
+              <input 
+                className="input-field" 
+                type="number" 
+                placeholder="Carboidrato (g)" 
+                value={newFood.carbs} 
+                onChange={e => setNewFood({...newFood, carbs: e.target.value})} 
+                style={{ background: '#131B2E' }}
+              />
+              <input 
+                className="input-field" 
+                type="number" 
+                placeholder="Gordura (g)" 
+                value={newFood.fat} 
+                onChange={e => setNewFood({...newFood, fat: e.target.value})} 
+                style={{ background: '#131B2E' }}
+              />
+            </div>
+            
+            <div className="flex gap-sm" style={{ marginTop: '1rem' }}>
+              <button 
+                type="button"
+                className="clay-btn-secondary" 
+                style={{ flex: 1 }} 
+                onClick={() => setShowAddForm(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button"
+                className="clay-btn-primary" 
+                style={{ flex: 2 }}
+                disabled={!newFood.name || !newFood.calories}
+                onClick={() => handleAddFood(newFood)}
+              >
+                Salvar Registro
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de Alimentos do Dia */}
+        {todaysFoods.length === 0 ? (
+          <div className="clay-card" style={{ padding: '2.5rem 1.5rem', textAlign: 'center' }}>
+            <Utensils size={36} color="var(--text-secondary)" style={{ margin: '0 auto 0.75rem auto' }} />
+            <p className="text-muted" style={{ fontSize: '0.9rem' }}>Nenhum alimento registrado para o dia de hoje.</p>
+            <button 
+              type="button"
+              className="clay-btn-secondary" 
+              style={{ marginTop: '1rem', fontSize: '0.85rem' }} 
+              onClick={() => setShowAddForm(true)}
+            >
+              Registrar Primeira Refeição
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {todaysFoods.map((f, i) => (
+              <div 
+                key={i} 
+                className="clay-card" 
+                style={{ 
+                  padding: '1rem 1.25rem', 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center' 
+                }}
+              >
                 <div>
-                  <div style={{ fontWeight: '500' }}>{f.display_name}</div>
-                  <div className="text-muted" style={{ fontSize: '0.8rem', display: 'flex', gap: '8px' }}>
-                    <span style={{ color: 'var(--accent-purple)' }}>P: {f.protein}g</span>
-                    <span style={{ color: 'var(--accent-green)' }}>C: {f.carbs}g</span>
-                    <span style={{ color: '#f59e0b' }}>G: {f.fat}g</span>
+                  <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#FFFFFF' }}>{f.name}</div>
+                  <div className="text-muted" style={{ fontSize: '0.8rem', display: 'flex', gap: '10px', marginTop: '2px' }}>
+                    <span style={{ color: 'var(--accent-secondary)' }}>P: {f.protein || 0}g</span>
+                    <span style={{ color: 'var(--status-success)' }}>C: {f.carbs || 0}g</span>
+                    <span style={{ color: 'var(--status-streak)' }}>G: {f.fat || 0}g</span>
                   </div>
                 </div>
-                <div style={{ fontWeight: 'bold' }}>{f.calories} kcal</div>
+
+                <div className="flex items-center gap-md">
+                  <div style={{ fontWeight: '800', fontSize: '1rem', color: '#FFFFFF' }}>
+                    {f.calories} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-secondary)' }}>kcal</span>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveFood(i)}
+                    aria-label={`Remover ${f.name}`}
+                    style={{ color: 'var(--text-secondary)', padding: '0.25rem' }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
-        ))
-      )}
+        )}
+      </div>
     </div>
   );
 }
