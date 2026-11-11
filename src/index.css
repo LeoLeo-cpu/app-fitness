@@ -289,6 +289,51 @@ button {
   gap: 0.25rem;
 }
 
+.ghost-indicator,
+.ghost-set-label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.ghost-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.ghost-set-label {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.progressive-badge {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--status-success);
+  font-size: 0.75rem;
+  font-weight: 700;
+  animation: progressivePulse 0.35s ease-out;
+}
+
+.copy-previous-sets {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  color: var(--accent-primary);
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.24);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.copy-previous-sets:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.45);
+}
+
 /* Tipografia e Auxiliares */
 h1 {
   font-size: 1.6rem;
@@ -355,8 +400,20 @@ h3 {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes progressivePulse {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 480px) {
+  .ghost-set-label {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 /* Calendário Estilizado Clay */

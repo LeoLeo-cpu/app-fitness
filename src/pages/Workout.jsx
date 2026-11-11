@@ -74,6 +74,27 @@ export function Workout() {
     return map;
   }, [history]);
 
+  // Mapeamento da última sessão de cada exercício (para Ghost Sets)
+  const lastSessionMap = useMemo(() => {
+    const map = {};
+    // Ordena do mais recente para o mais antigo
+    [...history]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .forEach(session => {
+        session.exercises?.forEach(ex => {
+          // Registra apenas a sessão mais recente de cada exercício
+          if (!map[ex.exerciseId]) {
+            map[ex.exerciseId] = {
+              sets: ex.sets || [],
+              date: new Date(session.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+              maxLoad: Math.max(0, ...(ex.sets?.map(s => Number(s.load) || 0) || [0]))
+            };
+          }
+        });
+      });
+    return map;
+  }, [history]);
+
   useEffect(() => {
     if (!timerEndTime) return;
     
@@ -320,12 +341,14 @@ export function Workout() {
           {exercises.map(ex => {
             const existingLog = sessionLogs.find(l => l.exerciseId === ex.id);
             const prevMax = prMap[ex.id] || 0;
+            const lastSession = lastSessionMap[ex.id] || null;
             return (
               <WorkoutCard 
                 key={ex.id} 
                 exercise={ex} 
                 existingLog={existingLog}
                 previousMaxLoad={prevMax}
+                lastSessionData={lastSession}
                 onLogSet={handleLogExercise} 
                 onSwap={handleSwapExercise} 
                 onSetComplete={() => startTimer(profile.restTimer || 60)} 

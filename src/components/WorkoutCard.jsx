@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import React from 'react';
-import { AlertCircle, CheckCircle, PlaySquare, RefreshCw, Timer, Plus, Minus, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, CheckCircle, PlaySquare, RefreshCw, Timer, Plus, Minus, Trophy, ChevronDown, ChevronUp, Ghost, TrendingUp } from 'lucide-react';
 import { VideoModal } from './VideoModal';
 
 export const WorkoutCard = React.memo(function WorkoutCard({ 
@@ -9,7 +9,8 @@ export const WorkoutCard = React.memo(function WorkoutCard({
   onSwap, 
   onSetComplete, 
   existingLog,
-  previousMaxLoad = 0 
+  previousMaxLoad = 0,
+  lastSessionData = null
 }) {
   const [expanded, setExpanded] = useState(false);
   const [logs, setLogs] = useState(
@@ -39,6 +40,17 @@ export const WorkoutCard = React.memo(function WorkoutCard({
     handleLogChange(index, field, nextVal.toString());
   };
 
+  const handleCopyPreviousSets = () => {
+    if (!lastSessionData?.sets?.length) return;
+
+    setLogs(currentLogs => currentLogs.map((log, index) => {
+      const previousSet = lastSessionData.sets[index];
+      return previousSet
+        ? { ...log, load: previousSet.load ?? '', reps: previousSet.reps ?? '' }
+        : log;
+    }));
+  };
+
   const handleComplete = () => {
     onLogSet({
       exerciseId: exercise.id,
@@ -56,6 +68,20 @@ export const WorkoutCard = React.memo(function WorkoutCard({
   // Cálculo de Carga Máxima atual vs Recorde Pessoal
   const currentMaxLoad = Math.max(0, ...logs.map(s => Number(s.load) || 0));
   const isNewPR = previousMaxLoad > 0 && currentMaxLoad > previousMaxLoad;
+  const lastSessionHighlight = lastSessionData?.sets?.[0];
+  const getProgressionLabel = (log, index) => {
+    const previousSet = lastSessionData?.sets?.[index];
+    if (!previousSet) return null;
+
+    const loadIncrease = Number(log.load) - Number(previousSet.load);
+    const repIncrease = Number(log.reps) - Number(previousSet.reps);
+    const progress = [];
+
+    if (loadIncrease > 0) progress.push(`+${loadIncrease} kg`);
+    if (repIncrease > 0) progress.push(`+${repIncrease} ${repIncrease === 1 ? 'rep' : 'reps'}`);
+
+    return progress.length ? `${progress.join(' • ')} de sobrecarga progressiva` : null;
+  };
 
   return (
     <div 
@@ -112,6 +138,17 @@ export const WorkoutCard = React.memo(function WorkoutCard({
               <span>• Recorde: {previousMaxLoad} kg</span>
             )}
           </div>
+
+          {/* Indicador Ghost Sets: dados da última sessão */}
+          {lastSessionData && !completed && (
+            <div className="ghost-indicator">
+              <Ghost size={12} />
+              <span>
+                Última sessão: {lastSessionData.date}
+                {lastSessionHighlight && ` • ${lastSessionHighlight.load} kg × ${lastSessionHighlight.reps} reps`}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-sm">
@@ -151,8 +188,10 @@ export const WorkoutCard = React.memo(function WorkoutCard({
       {expanded && (
         <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }} className="animate-fade-in">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {logs.map((log, i) => (
-              <div 
+            {logs.map((log, i) => {
+              const progressionLabel = getProgressionLabel(log, i);
+              return (
+                <div
                 key={i} 
                 style={{ 
                   background: '#131B2E', 
@@ -172,6 +211,12 @@ export const WorkoutCard = React.memo(function WorkoutCard({
                   </span>
                 </div>
 
+                {lastSessionData?.sets?.[i] && (
+                  <span className="ghost-set-label">
+                    Anterior: {lastSessionData.sets[i].load} kg × {lastSessionData.sets[i].reps} reps
+                  </span>
+                )}
+
                 {/* Controle de Carga com Stepper Tátil */}
                 <div className="flex items-center gap-xs">
                   <button 
@@ -185,7 +230,7 @@ export const WorkoutCard = React.memo(function WorkoutCard({
                   <div style={{ position: 'relative', width: '75px' }}>
                     <input 
                       type="number" 
-                      placeholder="kg" 
+                      placeholder={lastSessionData?.sets?.[i] ? `${lastSessionData.sets[i].load} kg` : 'kg'}
                       className="input-field" 
                       style={{ padding: '0.45rem 0.4rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: '700' }}
                       value={log.load} 
@@ -215,7 +260,7 @@ export const WorkoutCard = React.memo(function WorkoutCard({
                   <div style={{ position: 'relative', width: '65px' }}>
                     <input 
                       type="number" 
-                      placeholder="Reps" 
+                      placeholder={lastSessionData?.sets?.[i] ? `${lastSessionData.sets[i].reps} reps` : 'Reps'}
                       className="input-field" 
                       style={{ padding: '0.45rem 0.4rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: '700' }}
                       value={log.reps} 
@@ -231,8 +276,15 @@ export const WorkoutCard = React.memo(function WorkoutCard({
                     <Plus size={14} />
                   </button>
                 </div>
-              </div>
-            ))}
+
+                {progressionLabel && (
+                  <span className="progressive-badge">
+                    <TrendingUp size={13} /> {progressionLabel}
+                  </span>
+                )}
+                </div>
+              );
+            })}
           </div>
           
           <input 
@@ -245,6 +297,15 @@ export const WorkoutCard = React.memo(function WorkoutCard({
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {lastSessionData?.sets?.length > 0 && (
+              <button
+                type="button"
+                className="copy-previous-sets"
+                onClick={handleCopyPreviousSets}
+              >
+                ⚡ Copiar Cargas do Último Treino
+              </button>
+            )}
             <button 
               type="button"
               className="clay-btn-primary" 
