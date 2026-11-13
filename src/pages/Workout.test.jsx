@@ -41,4 +41,18 @@ describe('Workout', () => {
       expect(JSON.parse(window.localStorage.getItem('fitness_active_session_paused'))).toBe(false);
     });
   });
+
+  it('stores a summary when the workout is completed', async () => {
+    render(<Workout />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByRole('button', { name: /concluir sessão de treino/i }));
+
+    await waitFor(() => {
+      const [session] = JSON.parse(window.localStorage.getItem('fitness_workout_history'));
+      expect(session.volume).toBe(200);
+      expect(session.maxLoad).toBe(20);
+      expect(session.completedSets).toBe(0);
+      expect(session.durationSeconds).toEqual(expect.any(Number));
+    });
+  });
 });

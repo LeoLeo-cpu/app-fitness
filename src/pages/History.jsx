@@ -4,6 +4,8 @@ import { AreaChart, Area, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { DEFAULT_WORKOUT_PLAN } from '../data/defaultData';
 import { ChevronLeft, ChevronRight, Dumbbell, Award, Lock, Utensils, TrendingUp } from 'lucide-react';
 import { formatElapsedTime } from '../utils/sessionTimer';
+import { getMaxLoad, getPersonalRecords, getSessionVolume } from '../utils/workoutProgress';
+import { getGoalProgress } from '../utils/workoutGoals';
 
 export function History({ streak = 0 }) {
   const [history] = useLocalStorage('fitness_workout_history', []);
@@ -11,6 +13,8 @@ export function History({ streak = 0 }) {
   const [weightHistory, setWeightHistory] = useLocalStorage('fitness_weight_history', []);
   const [mealsLog] = useLocalStorage('fitness_meals_log', []);
   const [waterLog] = useLocalStorage('fitness_water_log', []);
+  const [workoutGoals, setWorkoutGoals] = useLocalStorage('fitness_workout_goals', { weeklyVolume: 10000, targetLoad: 0 });
+  const [historyNow] = useState(() => Date.now());
   
   // Abas principais: 'metricas' | 'gamificacao' | 'corpo'
   const [activeTab, setActiveTab] = useState('metricas');
@@ -22,6 +26,16 @@ export function History({ streak = 0 }) {
   
   const [selectedExerciseId, setSelectedExerciseId] = useState(allExercises[0]?.id || '');
   const [todayWeight, setTodayWeight] = useState('');
+
+  const personalRecords = useMemo(() => getPersonalRecords(history), [history]);
+  const weeklyVolume = useMemo(() => {
+    const cutoff = historyNow - (7 * 24 * 60 * 60 * 1000);
+    return history
+      .filter(session => new Date(session.date).getTime() >= cutoff)
+      .reduce((total, session) => total + (session.volume ?? getSessionVolume(session.exercises)), 0);
+  }, [history, historyNow]);
+  const weeklyVolumeGoal = getGoalProgress(weeklyVolume, workoutGoals.weeklyVolume);
+  const selectedExerciseRecord = personalRecords[selectedExerciseId] || { maxLoad: 0, maxVolume: 0 };
 
   // Preparação de dados do gráfico de Carga e Volume por exercício
   const exerciseChartData = useMemo(() => {
@@ -332,6 +346,56 @@ export function History({ streak = 0 }) {
               Acumulado
             </span>
           </div>
+
+          <div className="clay-card" style={{ padding: '1.25rem 1.5rem' }}>
+            <div className="flex justify-between items-center" style={{ marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#FFFFFF' }}>PRs e metas</h2>
+                <p className="text-muted" style={{ fontSize: '0.8rem' }}>Acompanhe seus melhores números sem pressão para concluir o treino.</p>
+              </div>
+              <span className="clay-pill" style={{ color: 'var(--status-streak)' }}>🏆 Carga máxima: {selectedExerciseRecord.maxLoad} kg</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+              <label className="text-muted" style={{ fontSize: '0.8rem' }}>
+                Meta semanal de volume (kg)
+                <input
+                  type="number"
+                  min="0"
+                  className="input-field"
+                  value={workoutGoals.weeklyVolume}
+                  onChange={event => setWorkoutGoals({ ...workoutGoals, weeklyVolume: Number(event.target.value) || 0 })}
+                  style={{ marginTop: '0.35rem' }}
+                />
+              </label>
+              <label className="text-muted" style={{ fontSize: '0.8rem' }}>
+                Meta de carga para {allExercises.find(exercise => exercise.id === selectedExerciseId)?.name || 'exercício'} (kg)
+                <input
+                  type="number"
+                  min="0"
+                  className="input-field"
+                  value={workoutGoals.targetLoad}
+                  onChange={event => setWorkoutGoals({ ...workoutGoals, targetLoad: Number(event.target.value) || 0 })}
+                  style={{ marginTop: '0.35rem' }}
+                />
+              </label>
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+              <div className="flex justify-between items-center text-muted" style={{ fontSize: '0.8rem', marginBottom: '0.35rem' }}>
+                <span>Volume dos últimos 7 dias</span>
+                <span>{weeklyVolumeGoal.value.toLocaleString('pt-BR')} / {weeklyVolumeGoal.target.toLocaleString('pt-BR')} kg</span>
+              </div>
+              <div style={{ height: '8px', background: 'var(--surface-card)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${weeklyVolumeGoal.percentage}%`, background: 'linear-gradient(90deg, #7C3AED, #06B6D4)', transition: 'width 0.3s ease' }} />
+              </div>
+              {workoutGoals.targetLoad > 0 && (
+                <p className="text-muted" style={{ fontSize: '0.78rem', marginTop: '0.6rem' }}>
+                  Meta de carga: {getGoalProgress(selectedExerciseRecord.maxLoad, workoutGoals.targetLoad).percentage}% atingida
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -449,6 +513,19 @@ export function History({ streak = 0 }) {
               <div className="animate-fade-in" style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 {sessionMap[selectedDate] ? (
                   <div style={{ background: '#131B2E', padding: '1rem', borderRadius: '16px', borderLeft: `4px solid ${getColorForType(sessionMap[selectedDate].workoutType)}` }}>
+                    {(() => {
+                      const selectedSession = sessionMap[selectedDate];
+                      const volume = selectedSession.volume ?? getSessionVolume(selectedSession.exercises);
+                      const maxLoad = selectedSession.maxLoad ?? getMaxLoad(selectedSession.exercises);
+                      return (
+                        <div className="flex gap-sm" style={{ flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                          {selectedSession.durationSeconds != null && <span className="clay-pill" style={{ fontSize: '0.72rem', color: 'var(--status-success)' }}>⏱️ {formatElapsedTime(selectedSession.durationSeconds)}</span>}
+                          <span className="clay-pill" style={{ fontSize: '0.72rem', color: 'var(--accent-secondary)' }}>Volume: {volume.toLocaleString('pt-BR')} kg</span>
+                          <span className="clay-pill" style={{ fontSize: '0.72rem', color: 'var(--accent-primary)' }}>Máx: {maxLoad} kg</span>
+                          {selectedSession.completedSets != null && <span className="clay-pill" style={{ fontSize: '0.72rem' }}>Séries: {selectedSession.completedSets}</span>}
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-between items-center" style={{ marginBottom: '0.75rem' }}>
                       <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#FFFFFF' }}>
                         Treino: {sessionMap[selectedDate].workoutType}

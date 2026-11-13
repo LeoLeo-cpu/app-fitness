@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
 import { formatElapsedTime, getElapsedSeconds } from '../utils/sessionTimer';
-import { getProgressionSuggestion } from '../utils/workoutProgress';
+import { getCompletedSetCount, getMaxLoad, getProgressionSuggestion, getSessionVolume } from '../utils/workoutProgress';
 
 let globalAudioCtx = null;
 const initAudio = () => {
@@ -228,6 +228,9 @@ export function Workout() {
       workoutType: currentWorkoutType,
       exercises: sessionLogs,
       durationSeconds: getElapsedSeconds(sessionStartedAt),
+      volume: getSessionVolume(sessionLogs),
+      maxLoad: getMaxLoad(sessionLogs),
+      completedSets: getCompletedSetCount(sessionLogs),
     };
     
     setHistory([session, ...history]);
