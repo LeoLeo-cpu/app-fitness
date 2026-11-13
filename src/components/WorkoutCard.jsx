@@ -10,11 +10,14 @@ export const WorkoutCard = React.memo(function WorkoutCard({
   onSetComplete, 
   existingLog,
   previousMaxLoad = 0,
-  lastSessionData = null
+  lastSessionData = null,
+  progressionSuggestion = null
 }) {
   const [expanded, setExpanded] = useState(false);
   const [logs, setLogs] = useState(
-    existingLog ? existingLog.sets : Array(exercise.sets).fill({ reps: '', load: exercise.suggestedLoad || '' })
+    existingLog
+      ? existingLog.sets.map(set => ({ ...set, completed: set.completed === true }))
+      : Array.from({ length: exercise.sets }, () => ({ reps: '', load: exercise.suggestedLoad || '', completed: false }))
   );
   const [note, setNote] = useState(existingLog ? existingLog.note : '');
   const [completed, setCompleted] = useState(!!existingLog);
@@ -38,6 +41,12 @@ export const WorkoutCard = React.memo(function WorkoutCard({
     const currentVal = Number(logs[index][field]) || 0;
     const nextVal = Math.max(0, currentVal + delta);
     handleLogChange(index, field, nextVal.toString());
+  };
+
+  const handleSetComplete = index => {
+    const newLogs = [...logs];
+    newLogs[index] = { ...newLogs[index], completed: !newLogs[index].completed };
+    setLogs(newLogs);
   };
 
   const handleCopyPreviousSets = () => {
@@ -69,6 +78,7 @@ export const WorkoutCard = React.memo(function WorkoutCard({
   const currentMaxLoad = Math.max(0, ...logs.map(s => Number(s.load) || 0));
   const isNewPR = previousMaxLoad > 0 && currentMaxLoad > previousMaxLoad;
   const lastSessionHighlight = lastSessionData?.sets?.[0];
+  const completedSetCount = logs.filter(set => set.completed).length;
   const getProgressionLabel = (log, index) => {
     const previousSet = lastSessionData?.sets?.[index];
     if (!previousSet) return null;
@@ -149,6 +159,11 @@ export const WorkoutCard = React.memo(function WorkoutCard({
               </span>
             </div>
           )}
+          {progressionSuggestion && !completed && (
+            <div className="progressive-badge" style={{ marginTop: '0.35rem' }}>
+              Próxima sessão: {progressionSuggestion.label}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-sm">
@@ -187,6 +202,9 @@ export const WorkoutCard = React.memo(function WorkoutCard({
       {/* Conteúdo Expandido do Exercício com Controles Táteis */}
       {expanded && (
         <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }} className="animate-fade-in">
+          <div className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+            Séries concluídas: {completedSetCount}/{logs.length}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {logs.map((log, i) => {
               const progressionLabel = getProgressionLabel(log, i);
@@ -210,6 +228,19 @@ export const WorkoutCard = React.memo(function WorkoutCard({
                     Série {i + 1}
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  className="clay-stepper-btn"
+                  aria-label={`${log.completed ? 'Desmarcar' : 'Concluir'} série ${i + 1}`}
+                  onClick={() => handleSetComplete(i)}
+                  style={{
+                    color: log.completed ? 'var(--status-success)' : 'var(--text-secondary)',
+                    borderColor: log.completed ? 'rgba(16, 185, 129, 0.4)' : undefined,
+                  }}
+                >
+                  <CheckCircle size={15} />
+                </button>
 
                 {lastSessionData?.sets?.[i] && (
                   <span className="ghost-set-label">

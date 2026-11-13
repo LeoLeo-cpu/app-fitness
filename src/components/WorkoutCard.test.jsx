@@ -65,4 +65,35 @@ describe('WorkoutCard ghost sets', () => {
 
     expect(screen.getByText('+1 rep de sobrecarga progressiva')).toBeInTheDocument();
   });
+
+  it('allows each set to be marked complete independently', () => {
+    render(
+      <WorkoutCard
+        exercise={exercise}
+        onLogSet={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Supino reto'));
+    expect(screen.getByText('Séries concluídas: 0/2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /concluir série 1/i }));
+    expect(screen.getByText('Séries concluídas: 1/2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /desmarcar série 1/i }));
+    expect(screen.getByText('Séries concluídas: 0/2')).toBeInTheDocument();
+  });
+
+  it('shows the progression suggestion for the next session', () => {
+    render(
+      <WorkoutCard
+        exercise={exercise}
+        lastSessionData={previousSession}
+        progressionSuggestion={{ type: 'reps', value: 11, label: '+1 repetição antes de subir a carga' }}
+        onLogSet={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/próxima sessão: \+1 repetição antes de subir a carga/i)).toBeInTheDocument();
+  });
 });

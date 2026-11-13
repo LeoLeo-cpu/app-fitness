@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
 import { formatElapsedTime, getElapsedSeconds } from '../utils/sessionTimer';
+import { getProgressionSuggestion } from '../utils/workoutProgress';
 
 let globalAudioCtx = null;
 const initAudio = () => {
@@ -396,6 +397,7 @@ export function Workout() {
             const existingLog = sessionLogs.find(l => l.exerciseId === ex.id);
             const prevMax = prMap[ex.id] || 0;
             const lastSession = lastSessionMap[ex.id] || null;
+            const progressionSuggestion = getProgressionSuggestion(lastSession?.sets, ex.repRange);
             return (
               <WorkoutCard 
                 key={ex.id} 
@@ -403,6 +405,7 @@ export function Workout() {
                 existingLog={existingLog}
                 previousMaxLoad={prevMax}
                 lastSessionData={lastSession}
+                progressionSuggestion={progressionSuggestion}
                 onLogSet={handleLogExercise} 
                 onSwap={handleSwapExercise} 
                 onSetComplete={() => startTimer(profile.restTimer || 60)} 
