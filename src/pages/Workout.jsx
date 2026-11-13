@@ -1,10 +1,11 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DEFAULT_USER_PROFILE, DEFAULT_WORKOUT_PLAN } from '../data/defaultData';
 import { WorkoutCard } from '../components/WorkoutCard';
-import { Check, Edit2, HeartPulse, Timer, X, ArrowRight } from 'lucide-react';
+import { Check, Edit2, HeartPulse, Timer, X, ArrowRight, SkipForward } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
+import { formatElapsedTime, getElapsedSeconds } from '../utils/sessionTimer';
 
 let globalAudioCtx = null;
 const initAudio = () => {
@@ -53,11 +54,13 @@ export function Workout() {
   const exercises = isRestDay ? [] : (workoutPlan[currentWorkoutType] || []);
   
   const [sessionLogs, setSessionLogs] = useLocalStorage('fitness_active_session_logs', []);
+  const [sessionStartedAt, setSessionStartedAt] = useLocalStorage('fitness_active_session_started_at', null);
   
   const { heartRate, isConnecting, error, connect, disconnect, isConnected } = useHeartRate();
 
   const [timerEndTime, setTimerEndTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => getElapsedSeconds(sessionStartedAt));
 
   // Mapeamento dos recordes pessoais (PRs) de cada exercício no histórico
   const prMap = useMemo(() => {
@@ -141,6 +144,20 @@ export function Workout() {
     return () => clearInterval(interval);
   }, [timerEndTime]);
 
+  useEffect(() => {
+    if (isRestDay) return undefined;
+
+    if (!sessionStartedAt) {
+      setSessionStartedAt(Date.now());
+      return undefined;
+    }
+
+    const updateElapsedTime = () => setElapsedSeconds(getElapsedSeconds(sessionStartedAt));
+    updateElapsedTime();
+    const interval = setInterval(updateElapsedTime, 1000);
+    return () => clearInterval(interval);
+  }, [isRestDay, sessionStartedAt, setSessionStartedAt]);
+
   const startTimer = (customDuration) => {
     initAudio();
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -197,16 +214,28 @@ export function Workout() {
       date: new Date().toISOString(),
       workoutType: currentWorkoutType,
       exercises: sessionLogs,
+      durationSeconds: getElapsedSeconds(sessionStartedAt),
     };
     
     setHistory([session, ...history]);
     // Avança para o próximo dia no ciclo
     setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
     setSessionLogs([]);
+    setSessionStartedAt(null);
+    setElapsedSeconds(0);
     navigate('/');
   };
 
   const advanceRestDay = () => {
+    setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
+  };
+
+  const handleSkipWorkout = () => {
+    setSessionLogs([]);
+    setSessionStartedAt(null);
+    setElapsedSeconds(0);
+    setTimerEndTime(null);
+    setTimeLeft(null);
     setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
   };
 
@@ -221,7 +250,7 @@ export function Workout() {
         <div>
           <div className="flex items-center gap-sm">
             <h1 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Treino de Hoje</h1>
-            <button 
+            <button
               aria-label="Gerenciar fichas de treino"
               style={{ color: 'var(--text-secondary)', padding: '0.3rem' }} 
               onClick={() => navigate('/workout-manager')}
@@ -235,9 +264,14 @@ export function Workout() {
         </div>
 
         <div className="flex items-center gap-sm">
+          {!isRestDay && (
+            <span className="clay-pill" aria-label={`Duração da sessão: ${formatElapsedTime(elapsedSeconds)}`} style={{ color: 'var(--status-success)', borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.08)' }}>
+              <Timer size={15} /> {formatElapsedTime(elapsedSeconds)} min
+            </span>
+          )}
           {/* Botão de Monitor Cardíaco Bluetooth */}
           {!isConnected ? (
-            <button 
+            <button
               onClick={connect} 
               disabled={isConnecting} 
               className="clay-pill"
@@ -356,22 +390,33 @@ export function Workout() {
             );
           })}
 
-          <button 
-            type="button"
-            className="clay-btn-primary" 
-            style={{ 
-              width: '100%', 
-              marginTop: '1.5rem', 
-              padding: '1rem',
-              fontSize: '1.05rem',
-              opacity: sessionLogs.length > 0 ? 1 : 0.6 
-            }}
-            onClick={completeWorkout}
-            disabled={sessionLogs.length === 0}
-          >
-            <Check size={20} />
-            Concluir Sessão de Treino ({sessionLogs.length}/{exercises.length})
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button
+              type="button"
+              className="clay-btn-primary"
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '1.05rem',
+                opacity: sessionLogs.length > 0 ? 1 : 0.6
+              }}
+              onClick={completeWorkout}
+              disabled={sessionLogs.length === 0}
+            >
+              <Check size={20} />
+              Concluir Sessão de Treino ({sessionLogs.length}/{exercises.length})
+            </button>
+
+            <button
+              type="button"
+              className="clay-btn-secondary"
+              style={{ width: '100%', color: 'var(--text-secondary)' }}
+              onClick={handleSkipWorkout}
+            >
+              <SkipForward size={18} />
+              Pular Treino
+            </button>
+          </div>
         </>
       )}
 

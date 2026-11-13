@@ -3,6 +3,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { AreaChart, Area, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DEFAULT_WORKOUT_PLAN } from '../data/defaultData';
 import { ChevronLeft, ChevronRight, Dumbbell, Award, Lock, Utensils, TrendingUp } from 'lucide-react';
+import { formatElapsedTime } from '../utils/sessionTimer';
 
 export function History({ streak = 0 }) {
   const [history] = useLocalStorage('fitness_workout_history', []);
@@ -452,9 +453,16 @@ export function History({ streak = 0 }) {
                       <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#FFFFFF' }}>
                         Treino: {sessionMap[selectedDate].workoutType}
                       </h4>
-                      <span className="text-muted" style={{ fontSize: '0.8rem' }}>
-                        {selectedDate.split('-').reverse().join('/')}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {sessionMap[selectedDate].durationSeconds != null && (
+                          <span className="clay-pill" style={{ fontSize: '0.72rem', color: 'var(--status-success)' }}>
+                            ⏱️ {formatElapsedTime(sessionMap[selectedDate].durationSeconds)} min
+                          </span>
+                        )}
+                        <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                          {selectedDate.split('-').reverse().join('/')}
+                        </span>
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
