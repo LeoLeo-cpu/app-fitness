@@ -25,4 +25,20 @@ describe('Workout', () => {
       expect(JSON.parse(window.localStorage.getItem('fitness_workout_history'))).toEqual([]);
     });
   });
+
+  it('pauses and resumes the active workout without changing its progress', async () => {
+    render(<Workout />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByRole('button', { name: /pausar treino/i }));
+    await waitFor(() => {
+      expect(JSON.parse(window.localStorage.getItem('fitness_active_session_paused'))).toBe(true);
+      expect(JSON.parse(window.localStorage.getItem('fitness_workout_current_day'))).toBe(0);
+      expect(JSON.parse(window.localStorage.getItem('fitness_active_session_logs'))).toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /retomar treino/i }));
+    await waitFor(() => {
+      expect(JSON.parse(window.localStorage.getItem('fitness_active_session_paused'))).toBe(false);
+    });
+  });
 });

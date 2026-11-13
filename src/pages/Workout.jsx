@@ -1,7 +1,7 @@
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DEFAULT_USER_PROFILE, DEFAULT_WORKOUT_PLAN } from '../data/defaultData';
 import { WorkoutCard } from '../components/WorkoutCard';
-import { Check, Edit2, HeartPulse, Timer, X, ArrowRight, SkipForward } from 'lucide-react';
+import { Check, Edit2, HeartPulse, Timer, X, ArrowRight, SkipForward, Pause, Play } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHeartRate } from '../hooks/useHeartRate';
@@ -55,6 +55,7 @@ export function Workout() {
   
   const [sessionLogs, setSessionLogs] = useLocalStorage('fitness_active_session_logs', []);
   const [sessionStartedAt, setSessionStartedAt] = useLocalStorage('fitness_active_session_started_at', null);
+  const [isPaused, setIsPaused] = useLocalStorage('fitness_active_session_paused', false);
   
   const { heartRate, isConnecting, error, connect, disconnect, isConnected } = useHeartRate();
 
@@ -99,7 +100,7 @@ export function Workout() {
   }, [history]);
 
   useEffect(() => {
-    if (!timerEndTime) return;
+    if (!timerEndTime || isPaused) return undefined;
     
     const interval = setInterval(() => {
       const now = Date.now();
@@ -142,10 +143,10 @@ export function Workout() {
     }, 200);
     
     return () => clearInterval(interval);
-  }, [timerEndTime]);
+  }, [timerEndTime, isPaused]);
 
   useEffect(() => {
-    if (isRestDay) return undefined;
+    if (isRestDay || isPaused) return undefined;
 
     if (!sessionStartedAt) {
       setSessionStartedAt(Date.now());
@@ -156,7 +157,18 @@ export function Workout() {
     updateElapsedTime();
     const interval = setInterval(updateElapsedTime, 1000);
     return () => clearInterval(interval);
-  }, [isRestDay, sessionStartedAt, setSessionStartedAt]);
+  }, [isRestDay, isPaused, sessionStartedAt, setSessionStartedAt]);
+
+  const pauseWorkout = () => {
+    if (!isPaused && sessionStartedAt) {
+      setSessionStartedAt(Date.now() - (elapsedSeconds * 1000));
+    }
+    setIsPaused(true);
+  };
+
+  const resumeWorkout = () => {
+    setIsPaused(false);
+  };
 
   const startTimer = (customDuration) => {
     initAudio();
@@ -222,6 +234,7 @@ export function Workout() {
     setCurrentDayIndex((safeIndex + 1) % workoutCycle.length);
     setSessionLogs([]);
     setSessionStartedAt(null);
+    setIsPaused(false);
     setElapsedSeconds(0);
     navigate('/');
   };
@@ -233,6 +246,7 @@ export function Workout() {
   const handleSkipWorkout = () => {
     setSessionLogs([]);
     setSessionStartedAt(null);
+    setIsPaused(false);
     setElapsedSeconds(0);
     setTimerEndTime(null);
     setTimeLeft(null);
@@ -268,6 +282,12 @@ export function Workout() {
             <span className="clay-pill" aria-label={`Duração da sessão: ${formatElapsedTime(elapsedSeconds)}`} style={{ color: 'var(--status-success)', borderColor: 'rgba(16, 185, 129, 0.3)', background: 'rgba(16, 185, 129, 0.08)' }}>
               <Timer size={15} /> {formatElapsedTime(elapsedSeconds)} min
             </span>
+          )}
+          {!isRestDay && (
+            <button type="button" className="clay-pill" aria-label={isPaused ? 'Retomar treino' : 'Pausar treino'} onClick={isPaused ? resumeWorkout : pauseWorkout} style={{ color: isPaused ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+              {isPaused ? <Play size={15} /> : <Pause size={15} />}
+              {isPaused ? 'Retomar' : 'Pausar'}
+            </button>
           )}
           {/* Botão de Monitor Cardíaco Bluetooth */}
           {!isConnected ? (
