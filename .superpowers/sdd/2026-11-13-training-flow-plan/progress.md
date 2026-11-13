@@ -4,3 +4,6 @@ Pre-flight: Task 1 utilities produce the shared progress/goal contracts consumed
 Task 1: complete (commits 7f7ff91dbd748f1154117aa61a846b03a36fb114 -> 7f7ff91dbd748f1154117aa61a846b03a36fb114, tests: npm test -- src/utils/workoutProgress.test.js src/utils/workoutGoals.test.js -> 6 passed)
 Task 2: complete (tests: npm test -- src/pages/Workout.test.jsx -> 2 passed)
 Task 3: complete (tests: npm test -- src/components/WorkoutCard.test.jsx -> 5 passed)
+Task 4: complete (tests: npm test -> 15 passed)
+Task 5: complete (tests: npm test -- src/utils/workoutGoals.test.js src/utils/workoutProgress.test.js -> 6 passed; UI changes shipped with Task 4 commit)
+Task 6: complete (tests: npm test -> 23 passed; npm run lint -> passed; npm run build -> passed; git diff --check -> passed)
