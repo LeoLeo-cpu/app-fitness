@@ -7,3 +7,4 @@ Task 3: complete (tests: npm test -- src/components/WorkoutCard.test.jsx -> 5 pa
 Task 4: complete (tests: npm test -> 15 passed)
 Task 5: complete (tests: npm test -- src/utils/workoutGoals.test.js src/utils/workoutProgress.test.js -> 6 passed; UI changes shipped with Task 4 commit)
 Task 6: complete (tests: npm test -> 23 passed; npm run lint -> passed; npm run build -> passed; git diff --check -> passed)
+Final review: self-review (no subagent tool) — reviewed diff 1621abb..HEAD against the approved spec and plan; no Critical or Important findings.
